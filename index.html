@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>채무조정 상담 도구</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #eef2f7; color: #1a202c; font-size: 14px; }
@@ -421,7 +422,10 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
   <!-- 하단 버튼 -->
   <div class="ip-footer">
     <button class="btn-calc" onclick="doCalc()">🔍 제도 분석 · 추천</button>
-    <button class="btn-reset" onclick="doReset()">↺ 초기화</button>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button class="btn-reset" style="flex:1" onclick="doReset()">↺ 초기화</button>
+      <button class="btn-reset" id="btn-export" style="flex:1;display:none;color:#2b6cb0;border-color:#bee3f8;" onclick="exportExcel()">📥 엑셀 내보내기</button>
+    </div>
   </div>
 </div>
 <!-- ════════ /입력 패널 ════════ -->
@@ -749,6 +753,8 @@ function doCalc() {
 }
 
 function renderResult(d) {
+  lastCalcData = d;
+  document.getElementById('btn-export').style.display = '';
   const panel = document.getElementById('result-panel');
   const rankLabel = ['🥇 최우선 추천','🥈 차선 고려','🥉 추가 검토'];
 
@@ -908,6 +914,498 @@ function renderResult(d) {
   `;
 }
 
+// ── 마지막 계산 결과 보관 (엑셀 내보내기용)
+let lastCalcData = null;
+
+// ── 엑셀 내보내기
+function exportExcel() {
+  if (!lastCalcData) { alert('먼저 제도 분석·추천을 실행해 주세요.'); return; }
+  const d = lastCalcData;
+  const j = d.journal;
+  const wb = XLSX.utils.book_new();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  // ── 이름/연락처 파싱
+  const nameParts = (j.name||'').split(/[\/\s]+/).filter(Boolean);
+  const clientName = nameParts[0] || '';
+  const clientPhone = nameParts.slice(1).join(' ') || '';
+
+  // ── 1) 상담일지 시트
+  const ws1 = buildJournalSheet(d, j, clientName, clientPhone, todayStr);
+  XLSX.utils.book_append_sheet(wb, ws1, '상담일지');
+
+  // ── 2) 평가표 시트
+  const ws2 = buildEvalSheet(d, j, clientName, clientPhone, todayStr);
+  XLSX.utils.book_append_sheet(wb, ws2, '평가표');
+
+  // 파일명 생성
+  const fname = `채무조정_${clientName||'상담'}_${todayStr}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+function buildJournalSheet(d, j, name, phone, todayStr) {
+  // AOA (array of arrays) 방식
+  const rows = [];
+  const merges = [];
+  function mr(r1,c1,r2,c2) { merges.push({s:{r:r1,c:c1},e:{r:r2,c:c2}}); }
+
+  // Row 0: 서식번호 + 제목
+  rows.push(['서식2-1','','채무조정 상담일지','','','','','','']);
+  mr(0,2,0,4);
+  // Row 1: 빈줄
+  rows.push([]);
+  // Row 2: 큰 제목
+  rows.push(['채무조정 상담일지','','','','','','','','']);
+  mr(2,0,2,8);
+
+  // Row 3: 빈줄
+  rows.push([]);
+
+  // Row 4: 신청인 정보
+  const birthYear = j.birth ? parseInt(j.birth) : '';
+  const age = birthYear ? (new Date().getFullYear() - birthYear) : '';
+  rows.push(['신청인 정보','성명','',name||'','','생년월일','',age,birthYear ? `${birthYear}년생` : '']);
+  mr(4,0,9,0); // A5:A10 merged
+  mr(4,1,4,2); mr(4,3,4,4); mr(4,5,4,6);
+
+  // Row 5: 업체명
+  rows.push(['','업체명','','','','업태/종목','','','']);
+  mr(5,1,5,2); mr(5,3,5,4); mr(5,5,5,6); mr(5,7,5,8);
+
+  // Row 6-7: 이메일/연락처
+  rows.push(['','이메일','','','','연락처(H.P)','',phone||'','']);
+  mr(6,1,7,2); mr(6,3,7,4); mr(6,5,7,6); mr(6,7,6,8);
+  rows.push(['','','','','','','','','']);
+
+  // Row 8: 사업장주소
+  rows.push(['','사업장주소','',j.region||'','','','','','']);
+  mr(8,1,8,2); mr(8,3,8,8);
+
+  // Row 9: 사업유지현황/성별
+  rows.push(['','사업유지현황','',d.flags.biz?'폐업':'','','성별','','','']);
+  mr(9,1,9,2); mr(9,3,9,4); mr(9,5,9,6); mr(9,7,9,8);
+
+  // Row 10: 담당
+  rows.push(['신용분석사','','','','담당변호사','','','상담사','']);
+  mr(10,0,10,1); mr(10,2,10,3); mr(10,5,10,6);
+
+  // Row 11: 빈줄
+  rows.push([]);
+
+  // Row 12: 상담일지 헤더
+  rows.push(['상담일지','상담 일','','상담 내용','','','','','']);
+  mr(12,0,34,0); // A13:A35 merged
+  mr(12,1,12,2); mr(12,3,12,8);
+
+  // Row 13: 상담일 1
+  rows.push(['',todayStr,'','상담내용 작성란','','','','','']);
+  mr(13,1,13,2); mr(13,3,13,8);
+
+  // Row 14-32: 상담내용 연속
+  // 자동 생성 상담 요약
+  const summary = buildConsultSummary(d, j);
+  rows.push(['',todayStr,'',summary,'','','','','']);
+  mr(14,1,32,2); mr(14,3,32,8);
+  for(let i=15;i<=32;i++) rows.push([]); // 빈 행 채우기
+
+  // Row 33: 상담자 기록
+  rows.push(['','기록','',todayStr,'','','','','']);
+  mr(33,1,33,2); mr(33,3,33,8);
+
+  // Row 34: 확인란
+  rows.push(['','확인','','','','','','','']);
+  mr(34,1,34,2); mr(34,3,34,8);
+
+  // Row 35: 빈줄 + 구분
+  rows.push(['','서명:','','','','','','','']);
+  mr(35,1,35,7);
+
+  // Row 36: 채무 사항 헤더
+  rows.push(['<채무 사항>']);
+
+  // Row 37: 채무 테이블 헤더
+  rows.push(['채무종류','','','금액(만원)','비고','재산의 종류','','금액(만원)','비고']);
+  mr(37,0,37,2); mr(37,5,37,6);
+
+  // Row 38-44: 채무/재산 테이블
+  const debtMan = Math.round(d.totalDebt / 10000);
+  const securedMan = Math.round(d.secured / 10000);
+  const taxMan = Math.round(d.tax / 10000);
+  const personalMan = Math.round(d.personal / 10000);
+  const unsecured = d.totalDebt - d.secured - d.tax - d.personal;
+  const unsecuredMan = Math.round(unsecured / 10000);
+  const assetsMan = Math.round(d.assets / 10000);
+
+  rows.push(['신용대출','','',unsecuredMan > 0 ? unsecuredMan : '','','거주지 보증금','',j.assets_detail?'':'','']);
+  mr(38,0,38,2); mr(38,5,38,6);
+  rows.push(['담보대출','','',securedMan > 0 ? securedMan : '없음','','소유 부동산','','','']);
+  mr(39,0,39,2); mr(39,5,39,6);
+  rows.push(['세금','','',taxMan > 0 ? taxMan : '없음','','배우자 부동산','','','']);
+  mr(40,0,40,2); mr(40,5,40,6);
+  rows.push(['사채','','',personalMan > 0 ? personalMan : '없음','','자동차','','','']);
+  mr(41,0,41,2); mr(41,5,41,6);
+  rows.push(['물품대금','','','','','해약(예상) 환급금','','','']);
+  mr(42,0,42,2); mr(42,5,42,6);
+  rows.push(['기타','','','','','기타','','','']);
+  mr(43,0,43,2); mr(43,5,43,6);
+  rows.push(['채무 총액 :','','',debtMan,'','재산 총계 :','',assetsMan,'']);
+  mr(44,0,44,2); mr(44,5,44,6);
+
+  // Row 45: 빈줄
+  rows.push([]);
+
+  // Row 46: 채무 증대 사유
+  rows.push(['채무 증대 사유','','','','','','','','금액(만원)']);
+
+  // Row 47: 사업 정보 헤더
+  rows.push(['사업개시일','','업종','','폐업일자','보증금','월세','월세미납','집기,비품처분']);
+  mr(47,0,47,1); mr(47,2,47,3);
+
+  // Row 48: 사업 데이터
+  rows.push(['','','','','','','','','']);
+  mr(48,0,48,1); mr(48,2,48,3);
+
+  // Row 49: 유의사항
+  rows.push(['* 폐업 후 친인척이 사업을 개시하거나 보증금 회수, 집기 및 비품 처분내역 유의']);
+  mr(49,0,49,8);
+
+  // Row 50: 빈줄
+  rows.push([]);
+
+  // Row 51: 소득 및 직업사항
+  rows.push(['<소득 및 직업사항>']);
+
+  // Row 52: 소득 테이블 헤더
+  rows.push(['소득의 종류','','금액(만원)','','직업 및 소득원','','','','']);
+  mr(52,0,52,1); mr(52,2,52,3); mr(52,4,52,8);
+
+  // Row 53: 소득 데이터
+  const incomeMan = Math.round(d.income / 10000);
+  rows.push([j.income_type || (d.income > 0 ? '근로소득' : '무직'),'',incomeMan||'','',j.income_type||'','','','','']);
+  mr(53,0,53,1); mr(53,2,53,3); mr(53,4,53,8);
+
+  // Row 54: 빈줄
+  rows.push([]);
+
+  // Row 55: 가족관계
+  rows.push(['<가족관계>']);
+
+  // Row 56: 가족 데이터
+  const familyStr = j.family || '';
+  const isMarried = familyStr.includes('배우자') || d.spIncome > 0;
+  rows.push(['혼인관계','',isMarried?'기혼':'미혼','부양가족수',Math.max(0,Math.floor(d.household)-1),'(미성년자녀','','65세이상','']);
+
+  // Row 57: 빈줄
+  rows.push([]);
+
+  // Row 58: 특기사항
+  rows.push(['<특기사항>']);
+
+  // Row 59-62: 특기사항 항목
+  rows.push(['[주식/가상화폐손실 규모]','','','','',d.flags.gambling?'있음':'없음','','','']);
+  mr(59,0,59,4); mr(59,5,59,8);
+  rows.push(['[회생/파산 경험 및 면책경과 여부(배우자 포함)]','','','','',d.prevProc!=='none'?'있음':'없음','','','']);
+  mr(60,0,60,4); mr(60,5,60,8);
+  rows.push(['[정신적/신체적 치료 내용]','','','','',d.flags.health?'있음':'없음','','','']);
+  mr(61,0,61,4); mr(61,5,61,8);
+  rows.push(['[기타]','','','','','','','','']);
+  mr(62,0,62,8);
+
+  // Row 63: 신청인 진술사항
+  rows.push(['신청인\n 진술사항','',j.memo||'','','','','','','']);
+  mr(63,0,63,1); mr(63,2,63,8);
+
+  // Row 64: 빈줄
+  rows.push([]);
+
+  // Row 65: 채무상황 상세내역
+  rows.push(['[채무상황 상세내역]']);
+
+  // Row 66: 빈줄
+  rows.push([]);
+
+  // Row 67: 채무 상세 헤더
+  rows.push(['채무종류','','','금액(만원)','사용처 또는 발생사유','','','','']);
+  mr(67,0,67,2); mr(67,4,67,8);
+
+  // Row 68-71: 채무 상세
+  if (unsecuredMan > 0) {
+    rows.push(['신용대출','','',unsecuredMan,'','','','','']);
+    mr(68,0,68,2); mr(68,4,68,8);
+  } else { rows.push([]); }
+  if (securedMan > 0) {
+    rows.push(['담보대출','','',securedMan,'','','','','']);
+    mr(69,0,69,2); mr(69,4,69,8);
+  } else { rows.push([]); }
+  if (taxMan > 0) {
+    rows.push(['세금·4대보험','','',taxMan,'','','','','']);
+    mr(70,0,70,2); mr(70,4,70,8);
+  } else { rows.push([]); }
+  if (personalMan > 0) {
+    rows.push(['개인채무(사채)','','',personalMan,'','','','','']);
+    mr(71,0,71,2); mr(71,4,71,8);
+  } else { rows.push([]); }
+
+  // Row 72: 채무 총액
+  rows.push(['채무 총액 :','','',debtMan,'','','','','']);
+  mr(72,0,72,2);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!merges'] = merges;
+  ws['!cols'] = [{wch:14},{wch:10},{wch:10},{wch:12},{wch:14},{wch:14},{wch:10},{wch:12},{wch:12}];
+  return ws;
+}
+
+function buildEvalSheet(d, j, name, phone, todayStr) {
+  const rows = [];
+  const merges = [];
+  function mr(r1,c1,r2,c2) { merges.push({s:{r:r1,c:c1},e:{r:r2,c:c2}}); }
+
+  const birthYear = j.birth ? parseInt(j.birth) : '';
+  const age = birthYear ? (new Date().getFullYear() - birthYear) : '';
+
+  // Row 0: 서식번호 + 제목
+  rows.push(['서식2-3','','채무조정 평가·판정서','','','','']);
+  mr(0,2,0,4);
+
+  // Row 1: 빈줄
+  rows.push([]);
+
+  // Row 2: 큰 제목
+  rows.push(['채무조정 신용평가 및 판정서','','','','','','']);
+  mr(2,0,2,6);
+
+  // Row 3: 빈줄
+  rows.push([]);
+
+  // Row 4: 신청인 정보
+  rows.push(['신청인','이      름',name||'','생년월일',birthYear ? `${birthYear}년생` : '','전화번호',phone||'']);
+  mr(4,0,6,0);
+
+  // Row 5: 업체명
+  rows.push(['','업  체  명','','','업   종','','']);
+  mr(5,1,5,2); mr(5,4,5,5);
+
+  // Row 6: 사업상태
+  rows.push(['','사업상태',d.flags.biz?'폐업':'영업중','','관할센터','','']);
+  mr(6,1,6,2); mr(6,4,6,5);
+
+  // Row 7: 빈줄
+  rows.push([]);
+
+  // Row 8: 담당
+  rows.push(['담당','신용분석사','','변호사','','사무원','']);
+
+  // Row 9: 평가
+  rows.push(['평가','변호사','','변호사','','변호사','']);
+
+  // Row 10: 빈줄
+  rows.push([]);
+
+  // Row 11: 평가항목 헤더
+  rows.push(['','평   가   항   목','','','','해당여부','후속 프로세스']);
+  mr(11,1,11,4);
+
+  // ── 1. 개인파산 신청대상 여부
+  const bankOpt = d.options.find(o=>o.id==='bankrupt');
+  const bankOk = bankOpt && bankOpt.ok && bankOpt.score > 0;
+
+  rows.push(['1.','개인파산 신청대상 여부(법 제305조 제1항)','','','','','']);
+  mr(12,1,12,6);
+
+  rows.push(['','✓ 채무자의 재산, 신용, 수입에 의하더라도 채무의 일반적·계속적 변제가 불가능하다고 객관적으로 판단됨','','','','',bankOk?'개인파산신청':'적용 안함']);
+  mr(13,1,13,4); mr(13,6,19,6);
+
+  rows.push(['','✓ 소득부족 상태이며, 총부채>총재산','',' ','','','']);
+  mr(14,1,14,4);
+  rows.push(['','✓ 개인파산 면책 확정일부터 7년 내','','','','','']);
+  mr(15,1,15,4);
+  rows.push(['','✓ 재산을 도피/은닉/고의로 재산을 감소한 사유 있음','','','','','']);
+  mr(16,1,16,4);
+  rows.push(['','✓ 과다한 낭비 또는 도박 등으로 재산 감소 또는 과대한 채무 부담','','','','','']);
+  mr(17,1,17,4);
+  rows.push(['','✓ 신용거래로 구입한 물건을 현저히 불리한 조건으로 처분','','','','','']);
+  mr(18,1,18,4);
+  rows.push(['','✓ 특정 채권자에게 특별한 이익을 줄 목적으로 변제한 경우','','','','','']);
+  mr(19,1,19,4);
+
+  // ── 2. 개인회생 신청대상 여부
+  const rehoOpt = d.options.find(o=>o.id==='reho');
+  const rehoOk = rehoOpt && rehoOpt.ok && rehoOpt.score > 0;
+
+  rows.push(['2.','개인회생 신청대상 여부 (법제614호 제1항 제4호 및 제2항 제1호)','','','','','']);
+  mr(20,1,20,6);
+
+  rows.push(['','✓ 가용소득총액이 보유 재산 합계액을 상회하여야 함','','','','',rehoOk?'개인회생신청':'적용 안함']);
+  mr(21,1,21,4); mr(21,6,24,6);
+  rows.push(['','✓ 정기적이고 확실한 수입 가능성','','','',d.income>0?'예':'아니오','']);
+  mr(22,1,22,4);
+  rows.push(['','✓ 무담보채무10억, 담보부채무 15억을 각각 넘지 않아야 함','','','','','']);
+  mr(23,1,23,4);
+  rows.push(['','✓ 개인회생 면책 5년 경과','','','','','']);
+  mr(24,1,24,4);
+
+  // ── 3. 신용회복위원회
+  const shinOpt = d.options.find(o=>o.id==='shin');
+  const shinOk = shinOpt && shinOpt.ok && shinOpt.score > 0;
+
+  rows.push(['3.','사적채무조정(신용회복위원회) 신청대상 여부','','','','','']);
+  mr(25,1,25,4);
+  rows.push(['','✓ 채무조정 효력이 상실된 날로부터 3개월 이상 경과하지 않은 자','','','','',shinOk?'신용회복위 신청':'적용 안함']);
+  mr(26,1,26,4); mr(26,6,35,6);
+  for(let i=27;i<=34;i++) {
+    rows.push(['','✓ (해당 요건)','','','','','']);
+    mr(i,1,i,4);
+  }
+  rows.push(['','✓ 최저생계비 이상의 수입이 있거나 채무상환이 가능함','','','','','']);
+  mr(35,1,35,4);
+
+  // ── 4. 개인워크아웃
+  rows.push(['4.','사적조정(개인워크아웃) 신청대상 여부','','','','','']);
+  mr(36,1,36,6);
+  rows.push(['','✓ 연체기간 3개월(90일) 이상','','','','',d.overdue>=90?'적용 가능':'적용 안함']);
+  mr(37,1,37,4);
+
+  // ── 5. 프리워크아웃
+  rows.push(['5.','사적조정(프리워크아웃) 신청대상 여부','','','','','']);
+  mr(38,1,38,6);
+  rows.push(['','✓ 금융채무 연체 기간 30일 초과 90일 미만','','','','',(d.overdue>31&&d.overdue<90)?'적용 가능':'적용 안함']);
+  mr(39,1,39,4); mr(39,6,40,6);
+  rows.push(['','✓ 최근1년 내 누적 연체일수 30일 이상, 연소득 4000만원 이하','','','','','']);
+  mr(40,1,40,4);
+
+  // ── 6. 신속채무조정
+  rows.push(['6.','사적조정(신속채무조정) 신청대상여부','','','','','']);
+  mr(41,1,41,6);
+  rows.push(['','✓ 정상이행, 연체 예상, 연체기간 30일 이내','','','','',(d.overdue<=31)?'적용 가능':'적용 안함']);
+  mr(42,1,42,4); mr(42,6,45,6);
+  rows.push(['','✓ 최근 6개월이내 폐업','','','','','']);
+  mr(43,1,43,4);
+  rows.push(['','✓ 최근 6개월이내 5일이상 연체횟수 3회 이상','','','','','']);
+  mr(44,1,44,4);
+  rows.push(['','✓ 신용평점 하위 10%','','','','','']);
+  mr(45,1,45,4);
+
+  // ── 7. 새출발기금
+  const saeOpt = d.options.find(o=>o.id==='saefund');
+  const saeOk = saeOpt && saeOpt.ok && saeOpt.score > 0;
+
+  rows.push(['7.','새출발기금 신청대상 여부','','','','','']);
+  mr(46,1,46,6);
+  rows.push(['','✓ 사업을 영위한 개인·법인 소상공인','','','','',saeOk?'새출발기금 신청':'적용 안함']);
+  mr(47,1,47,5); mr(47,6,51,6);
+  rows.push(['','    1) 부실 차주( 3개월 이상 연체)','','','','','']);
+  mr(48,1,48,4);
+  rows.push(['','    2) 부실우려 차주','','','','','']);
+  mr(49,1,49,4);
+  rows.push(['','✓ 채무총액 15억원 이하','','','','','']);
+  mr(50,1,50,4);
+  rows.push(['','✓ 매입하자 부채 또는 최근 6개월 내 신규 대출 아님','','','','','']);
+  mr(51,1,51,4);
+
+  // Row 52: 빈줄
+  rows.push([]);
+
+  // Row 53: 평가 및 SOLUTION 헤더
+  rows.push(['평가 및 SOLUSION','','','','','','']);
+  mr(53,0,53,6);
+
+  // Row 54: 헤더
+  rows.push(['상담 평가','','','','SOLUSION','','목표']);
+  mr(54,2,54,3);
+
+  // Row 55-61: 체크박스
+  const recommended = d.options.filter(o=>o.ok&&o.score>0).map(o=>o.id);
+  const topRec = d.options[0]?.id || '';
+
+  const evalItems = [
+    ['bankrupt', '파산신청'],
+    ['reho', '개인회생신청'],
+    ['workout', '개인워크아웃'],
+    ['preworkout', '프리워크아웃'],
+    ['quick', '신속채무조정'],
+    ['saefund', '새출발기금'],
+    ['none', '자격미달'],
+  ];
+
+  evalItems.forEach(([id, label], idx) => {
+    const checked = (id === topRec) || (id === 'none' && recommended.length === 0);
+    rows.push([checked ? '■' : '□', label, '','','','','']);
+  });
+
+  // Row 62: 빈줄
+  rows.push([]);
+
+  // Row 63: 판정의견
+  const topName = d.options[0]?.name || '';
+  rows.push(['판정 의견','',topName,'','','','']);
+  mr(63,0,63,1); mr(63,2,63,6);
+
+  // Row 64-67: 의견 상세 (빈)
+  rows.push([]);
+  rows.push(['상담 상세 의견:','','','','','','']);
+  mr(65,0,65,6);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!merges'] = merges;
+  ws['!cols'] = [{wch:10},{wch:12},{wch:14},{wch:12},{wch:14},{wch:12},{wch:16}];
+  return ws;
+}
+
+function buildConsultSummary(d, j) {
+  const lines = [];
+  lines.push(`상담일: ${new Date().toLocaleDateString('ko-KR')}`);
+  lines.push('');
+
+  // 소득/채무 현황
+  if (d.income > 0) lines.push(`소득: 월 ${fmtW(d.income)}${j.income_type?' ('+j.income_type+')':''}`);
+  lines.push(`채무 총액: ${fmtW(d.totalDebt)}`);
+  if (d.secured > 0) lines.push(`  - 담보채무: ${fmtW(d.secured)}`);
+  if (d.tax > 0) lines.push(`  - 세금·4대보험: ${fmtW(d.tax)}`);
+  if (d.personal > 0) lines.push(`  - 개인채무: ${fmtW(d.personal)}`);
+  if (d.assets > 0) lines.push(`재산: ${fmtW(d.assets)}${j.assets_detail?' ('+j.assets_detail+')':''}`);
+  lines.push('');
+
+  // 가족
+  if (j.family) lines.push(`가족관계: ${j.family}`);
+  lines.push(`가구원수: ${d.household}인 (생계비 ${fmtN(d.living)}원)`);
+  lines.push('');
+
+  // 평가 결과
+  lines.push('【평가 결과】');
+  const viable = d.options.filter(o=>o.ok&&o.score>0);
+  if (viable.length > 0) {
+    lines.push(`추천: ${viable.map(o=>o.name).join(' > ')}`);
+    const top = viable[0];
+    lines.push(`최우선: ${top.name}`);
+    if (top.id === 'reho') {
+      lines.push(`  가용자금: ${fmtN(d.disposable)}원/월, 예상 변제금 ${fmtW(d.rehoExpected)}, 감면율 ${pct(d.rehoReduce)}`);
+    } else if (top.id === 'saefund') {
+      lines.push(`  채무부담액: ${fmtW(Math.max(0,d.saefundBurden))}, 감면율 ${pct(d.saefundReduce)}, 월 ${fmtN(d.saefundMonthly)}원`);
+    } else if (top.id === 'bankrupt') {
+      lines.push(`  소득 생계비 부족, 면책 시 채무 전액 소멸`);
+    }
+  } else {
+    lines.push('적격 제도 없음 - 추가 상담 필요');
+  }
+
+  // 경고
+  if (d.warnings.length > 0) {
+    lines.push('');
+    lines.push('【주의사항】');
+    d.warnings.forEach(w => lines.push(`- ${w}`));
+  }
+
+  // 메모
+  if (j.memo) {
+    lines.push('');
+    lines.push(`【기타】${j.memo}`);
+  }
+
+  return lines.join('\n');
+}
+
 function doReset() {
   document.querySelectorAll('input,select,textarea').forEach(el => {
     if (el.tagName==='SELECT') el.selectedIndex=0;
@@ -923,6 +1421,8 @@ function doReset() {
   });
   document.getElementById('h_prev_warning').style.display='none';
   document.getElementById('f_sp_income').value='';
+  document.getElementById('btn-export').style.display='none';
+  lastCalcData = null;
   document.getElementById('result-panel').innerHTML=`
     <div class="placeholder">
       <div class="ph-icon">📊</div>
