@@ -1,0 +1,7 @@
+_clean_template.xlsx
+_template_b64.txt
+_patch_html.py
+_make_clean_template.py
+_verify_export.py
+_verify_output.xlsx
+.claude/
