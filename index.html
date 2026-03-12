@@ -294,7 +294,7 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
 파산은 생계비 이하 소득이어야 진행 용이.
 26년 기준 1인 파산 생계비: 1,435,208원</div>
         </label>
-        <input type="number" id="f_income" placeholder="예: 2500000" oninput="onLiveCalc()">
+        <input type="number" id="f_income" placeholder="예: 250만 → 2500000" oninput="onLiveCalc()">
         <div class="val-hint" id="h_income"></div>
       </div>
       <div class="field">
@@ -303,7 +303,7 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
 부양가족 산정에만 영향을 줍니다.
 배우자 소득 &gt; 본인 소득이면 배우자가 가족을 부양하는 구조로 판단, 가구원수에서 배우자를 제외합니다.</div>
         </label>
-        <input type="number" id="f_sp_income" placeholder="없으면 0" oninput="onLiveCalc()">
+        <input type="number" id="f_sp_income" placeholder="없으면 0 입력" oninput="onLiveCalc()">
         <div class="sub-hint" id="h_sp_income"></div>
       </div>
     </div>
@@ -326,14 +326,14 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
 법원 미인정 가능성 미리 고지)
 → 각 항목 구분하여 확인할 것</div>
       </label>
-      <input type="number" id="f_total_debt" placeholder="예: 94000000" oninput="onLiveCalc()">
+      <input type="number" id="f_total_debt" placeholder="예: 9400만 → 94000000" oninput="onLiveCalc()">
       <div class="val-hint" id="h_total_debt"></div>
     </div>
 
     <div class="row2">
       <div class="field">
         <label>담보채무 (원)</label>
-        <input type="number" id="f_secured" placeholder="0" oninput="onLiveCalc()">
+        <input type="number" id="f_secured" placeholder="없으면 0 입력" oninput="onLiveCalc()">
       </div>
       <div class="field">
         <label>세금·4대보험 체납 (원) <span class="tip-icon">ℹ</span>
@@ -342,17 +342,17 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
 파산 시에도 면책 대상 아님 (비면책채권).
 새출발기금 대상 외.</div>
         </label>
-        <input type="number" id="f_tax" placeholder="0" oninput="onLiveCalc()">
+        <input type="number" id="f_tax" placeholder="없으면 0 입력" oninput="onLiveCalc()">
       </div>
     </div>
     <div class="row2">
       <div class="field">
         <label>개인채무 (원)</label>
-        <input type="number" id="f_personal" placeholder="사채·지인" oninput="onLiveCalc()">
+        <input type="number" id="f_personal" placeholder="없으면 0 입력" oninput="onLiveCalc()">
       </div>
       <div class="field">
         <label>협약 외 채무 (원)</label>
-        <input type="number" id="f_non_partner" placeholder="새출발 제외분" oninput="onLiveCalc()">
+        <input type="number" id="f_non_partner" placeholder="없으면 0 입력" oninput="onLiveCalc()">
       </div>
     </div>
 
@@ -364,7 +364,7 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
 · 개인회생: 면책 불허가 사유 검토 필요
 사용처 반드시 확인 (도박·코인·주식 등)</div>
         </label>
-        <input type="number" id="f_recent_debt" placeholder="0" oninput="onLiveCalc()">
+        <input type="number" id="f_recent_debt" placeholder="없으면 0 입력" oninput="onLiveCalc()">
         <div id="h_recent_debt" class="sub-hint"></div>
       </div>
       <div class="field">
@@ -396,7 +396,7 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
    (최근 법원은 잘 안 보는 경향)
 새출발기금 부실차주: 재산 6.5억 미만 가능</div>
       </label>
-      <input type="number" id="f_assets" placeholder="예: 10000000" oninput="onLiveCalc()">
+      <input type="number" id="f_assets" placeholder="예: 1000만 → 10000000" oninput="onLiveCalc()">
       <div class="val-hint" id="h_assets"></div>
     </div>
     <div class="field">
@@ -940,20 +940,20 @@ function renderResult(d) {
         <span style="font-size:11px;color:#718096;">선택 시 상담내용·SOLUSION·판정의견이 자동 생성됩니다</span>
       </div>
       <div class="narrative-box">
-        <label>상담일지 - 상담내용 (D15 영역, 수정 가능)</label>
+        <label>상담일지 - 상담내용 (수정 가능)</label>
         <textarea id="txt_narrative" placeholder="제도를 선택하면 자동 생성됩니다..."></textarea>
       </div>
       <div class="narrative-box">
-        <label>평가표 - 상담 평가 (C56 영역, 수정 가능)</label>
+        <label>평가표 - 상담 평가 (수정 가능)</label>
         <textarea id="txt_evaluation" placeholder="제도를 선택하면 자동 생성됩니다..." style="min-height:120px;"></textarea>
       </div>
       <div class="narrative-row">
         <div class="mini-box">
-          <label>평가표 - SOLUSION (C55)</label>
+          <label>평가표 - 상담평가 제목</label>
           <input type="text" id="txt_solusion" placeholder="자동 생성" readonly>
         </div>
         <div class="mini-box">
-          <label>평가표 - 판정의견 (C64)</label>
+          <label>평가표 - 판정의견</label>
           <input type="text" id="txt_verdict" placeholder="자동 생성" readonly>
         </div>
       </div>
