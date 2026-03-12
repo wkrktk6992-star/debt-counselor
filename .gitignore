@@ -2,6 +2,11 @@ _clean_template.xlsx
 _template_b64.txt
 _patch_html.py
 _make_clean_template.py
+_make_sample_export.py
 _verify_export.py
 _verify_output.xlsx
+_sample_export.xlsx
+~$*
+_browser_test.py
+_test_downloads/
 .claude/

@@ -943,6 +943,10 @@ function renderResult(d) {
         <label>상담일지 - 상담내용 (D15 영역, 수정 가능)</label>
         <textarea id="txt_narrative" placeholder="제도를 선택하면 자동 생성됩니다..."></textarea>
       </div>
+      <div class="narrative-box">
+        <label>평가표 - 상담 평가 (C56 영역, 수정 가능)</label>
+        <textarea id="txt_evaluation" placeholder="제도를 선택하면 자동 생성됩니다..." style="min-height:120px;"></textarea>
+      </div>
       <div class="narrative-row">
         <div class="mini-box">
           <label>평가표 - SOLUSION (C55)</label>
@@ -979,40 +983,80 @@ function onProgramSelect() {
   const sel = document.getElementById('sel_program').value;
   if (!sel) {
     document.getElementById('txt_narrative').value = '';
+    document.getElementById('txt_evaluation').value = '';
     document.getElementById('txt_solusion').value = '';
     document.getElementById('txt_verdict').value = '';
     return;
   }
   document.getElementById('txt_narrative').value = generateNarrative(lastCalcData, sel);
+  document.getElementById('txt_evaluation').value = generateEvaluation(lastCalcData, sel);
   document.getElementById('txt_solusion').value = generateSolusion(sel);
   document.getElementById('txt_verdict').value = generateVerdict(sel);
 }
 
 function generateSolusion(programId) {
-  if (programId === 'shin' && lastCalcData) {
-    const o = lastCalcData.overdue;
-    if (o >= 90) return '워크아웃';
-    if (o > 31) return '프리워크아웃';
-    return '신속채무조정';
+  // C55: 고정 텍스트 (실무 관행과 동일)
+  return 'SOLUSION';
+}
+
+function generateEvaluation(d, programId) {
+  // C56: 상세 상담 평가 (C56:F62 병합 영역)
+  if (!d) return '';
+  const lines = [];
+  const j = d.journal || {};
+  const nameParts = (j.name||'').split(/[\/\s]+/).filter(Boolean);
+  const clientName = nameParts[0] || '신청인';
+  const incomeType = j.income_type || (d.flags.biz ? '사업소득' : d.income > 0 ? '근로소득' : '');
+
+  if (programId === 'bankrupt') {
+    if (d.income > 0) {
+      lines.push(`신청인은 ${incomeType ? incomeType + '으로 ' : ''}월 ${fmtW(d.income)}의 소득이 있으나, ${d.adjustedHousehold}인 가구 기준 최저생계비 ${fmtN(d.living)}원${d.disposable >= 0 ? '을 공제하면 가용소득이 월 ' + fmtN(d.disposable) + '원에 불과하여' : '에도 미달하여'} 총 채무 ${fmtW(d.totalDebt)}의 변제가 사실상 불가능한 상태임.`);
+    } else {
+      lines.push(`신청인은 현재 소득이 없는 상태이며, ${d.adjustedHousehold}인 가구 기준 최저생계비 ${fmtN(d.living)}원을 충당할 수 없어 총 채무 ${fmtW(d.totalDebt)}의 변제가 불가능한 지급불능 상태에 해당함.`);
+    }
+    if (d.assets > 0) {
+      lines.push(`보유 재산 ${fmtW(d.assets)}${j.assets_detail ? '(' + j.assets_detail + ')' : ''}을 감안하더라도 채무 총액 대비 변제능력이 현저히 부족함.`);
+    } else {
+      lines.push(`별다른 재산도 없는 상황임.`);
+    }
+    lines.push(`따라서 개인파산 후 면책을 통해 경제적 재기의 기회를 부여하는 것이 적합하다고 사료되어 이를 진행하기로 함.`);
+    if (d.flags.gambling) lines.push(`다만 도박·투자 이력이 있어 면책 불허가 사유 해당 여부에 대한 검토가 필요함.`);
+    if (d.age && d.age >= 60) lines.push(`만 ${d.age}세 고령으로 향후 근로능력 감소가 예상되어 파산이 더욱 적합함.`);
+  } else if (programId === 'reho') {
+    lines.push(`신청인은 ${incomeType ? incomeType + '으로 ' : ''}월 ${fmtW(d.income)}의 지속적인 소득이 발생하고 있으며, ${d.adjustedHousehold}인 가구 생계비 ${fmtN(d.living)}원 공제 후 가용소득 월 ${fmtN(d.disposable)}원이 있어 변제계획 수립이 가능함.`);
+    lines.push(`총 채무 ${fmtW(d.totalDebt)} 대비 예상 변제금 총 ${fmtW(d.rehoExpected)}, 월 변제액 ${fmtN(d.rehoMonthly)}원(${d.youngMonths ? d.youngMonths + '개월, 청년회생' : '36개월'})으로 예상 감면율 ${pct(d.rehoReduce)}임.`);
+    if (d.assets > 0) lines.push(`재산 ${fmtW(d.assets)}${j.assets_detail ? '(' + j.assets_detail + ')' : ''}이 있으나 청산가치를 상회하는 변제금으로 채권자 이익에도 부합함.`);
+    lines.push(`따라서 개인회생을 통해서 채무조정이 가능할 것으로 보임.`);
+    if (d.youngMonths) lines.push(`만 ${d.age}세로 청년회생(변제기간 ${d.youngMonths}개월) 적용이 가능하여 더욱 유리한 조건으로 진행 가능함.`);
+    if (d.recentRatio > 0.3) lines.push(`다만 최근 6개월 내 신규채무 비율이 ${pct(d.recentRatio)}로 면책 불허가 사유 검토가 필요함.`);
+  } else if (programId === 'saefund') {
+    lines.push(`신청인은 ${d.overdue >= 90 ? '3개월 이상 연체된 부실차주' : '부실우려 차주'}로서 새출발기금 신청 대상에 해당함.`);
+    lines.push(`총 채무 ${fmtW(d.totalDebt)} 중 협약기관 채무 ${fmtW(d.partnerDebt)} 기준, 채무 부담액 ${fmtW(Math.max(0,d.saefundBurden))}, 예상 감면율 ${pct(d.saefundReduce)}, 월 상환액 ${fmtN(d.saefundMonthly)}원(120개월)으로 안정적인 상환이 가능할 것으로 판단됨.`);
+    if (d.nonPartner > 0) lines.push(`협약 외 채무 ${fmtW(d.nonPartner)}은 별도 처리가 필요함을 안내함.`);
+    lines.push(`따라서 원금 감면과 장기 분할상환을 통해 채무 해소가 가능한 새출발기금 신청이 적합하다고 사료됨.`);
+    if (d.flags.seizure) lines.push(`가압류가 있어 신청 전 해제 절차(약 1개월)가 선행되어야 함.`);
+    if (d.flags.longterm) lines.push(`장기연체코드[0101] 해당하여 credit4u.or.kr 확인 후 부실차주 신청 진행.`);
+  } else if (programId === 'shin') {
+    const o = d.overdue;
+    const subName = o >= 90 ? '개인워크아웃' : o > 31 ? '프리워크아웃' : '신속채무조정';
+    lines.push(`신청인은 현재 연체 ${o >= 90 ? '3개월 이상' : o > 31 ? '1~3개월' : '31일 이내'} 상태로, 총 채무 ${fmtW(d.totalDebt)}에 대해 신용회복위원회를 통한 ${subName} 절차가 적합함.`);
+    lines.push(`이자·연체료 감면 중심으로 예상 감면율 약 30~50%, 월 상환액 ${fmtN(d.shinMonthly)}원(최대 60개월)으로 정상적인 채무 상환이 가능할 것으로 판단됨.`);
+    lines.push(`따라서 신용회복위원회를 통해서 당장의 채무 부담을 줄이는 것이 유효할 것으로 판단됨.`);
+    if (o >= 60) lines.push(`다만 연체 3개월 접근 시 새출발기금 동시 검토가 필요함.`);
+    if (d.assets >= 650000000) lines.push(`재산이 과도하게 많아 개인회생은 어려울 것으로 판단되어 신용회복위원회가 더 적합함.`);
   }
-  const map = {
-    bankrupt: '개인파산신청', reho: '개인회생신청',
-    saefund: '새출발기금'
-  };
-  return map[programId] || '';
+  return lines.join('\n');
 }
 
 function generateVerdict(programId) {
+  // C64: 판정 의견 — 짧은 제도명 (실무 관행과 동일)
   if (programId === 'shin' && lastCalcData) {
     const o = lastCalcData.overdue;
-    if (o >= 90) return '워크아웃신청';
-    if (o > 31) return '프리워크아웃신청';
-    return '신속채무조정신청';
+    if (o >= 90) return '개인워크아웃';
+    if (o > 31) return '프리워크아웃';
+    return '신속채무조정';
   }
-  const map = {
-    bankrupt: '개인파산신청', reho: '개인회생신청',
-    saefund: '새출발기금신청'
-  };
+  const map = { bankrupt: '개인파산', reho: '개인회생', saefund: '새출발기금' };
   return map[programId] || '';
 }
 
@@ -1242,11 +1286,14 @@ async function exportExcel() {
         ws2.getCell(`A${row}`).value = (id === checkTarget) ? '■' : '□';
       }
 
-      // SOLUSION
-      const solusionText = document.getElementById('txt_solusion')?.value || generateSolusion(selProgram);
-      ws2.getCell('C55').value = solusionText;
+      // SOLUSION (C55: 고정 텍스트)
+      ws2.getCell('C55').value = 'SOLUSION';
 
-      // 판정의견
+      // 상담 평가 (C56: 상세 평가 내용)
+      const evalText = document.getElementById('txt_evaluation')?.value || generateEvaluation(d, selProgram);
+      ws2.getCell('C56').value = evalText;
+
+      // 판정의견 (C64: 짧은 제도명)
       const verdictText = document.getElementById('txt_verdict')?.value || generateVerdict(selProgram);
       ws2.getCell('C64').value = verdictText;
     }
