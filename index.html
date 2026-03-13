@@ -6,182 +6,264 @@
 <title>채무조정 상담 도구</title>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #eef2f7; color: #1a202c; font-size: 14px; }
+:root {
+  /* C: 순백 배경 + 높은 대비 텍스트 */
+  --bg: #f8f9fb; --surface: #ffffff; --surface-alt: #f8f9fa;
+  --border: #e5e7eb; --border-light: #f0f1f3;
+  --text: #111827; --text-sub: #6b7280; --text-dim: #9ca3af;
+  /* C: 네이비 단일 액센트 */
+  --accent: #1e3a5f; --accent-dark: #0f2340; --accent-light: #e8eef6;
+  /* 기본: 명확한 시맨틱 컬러 */
+  --green: #059669; --green-bg: #f0fdf4; --green-dark: #064e3b;
+  --blue: #2563eb; --blue-bg: #eff6ff; --blue-dark: #1e3a5f;
+  --purple: #7c3aed; --purple-bg: #f5f3ff; --purple-dark: #4c1d95;
+  --red: #dc2626; --red-bg: #fef2f2; --red-dark: #991b1b;
+  --amber: #d97706; --amber-bg: #fffbeb; --amber-dark: #78350f;
+  /* C: 작은 radius + 미니멀 그림자 */
+  --radius: 10px; --radius-sm: 6px; --radius-xs: 4px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.1);
+  --transition: 0.18s ease;
+}
+body { font-family: 'Pretendard Variable', 'Pretendard', -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; }
 
-.top-bar { background: #1e3a5f; color: white; padding: 13px 24px; display: flex; align-items: center; justify-content: space-between; }
+/* ── 상단 바: C의 단색 + 기본의 미세 그라데이션 */
+.top-bar {
+  background: linear-gradient(135deg, #1e3a5f 0%, #264d7a 100%);
+  color: white; padding: 15px 28px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
 .top-bar-left { display: flex; align-items: center; gap: 10px; }
-.top-bar h1 { font-size: 16px; font-weight: 700; }
-.top-bar .sub { font-size: 11px; opacity: 0.65; }
+.top-bar h1 { font-size: 16px; font-weight: 700; letter-spacing: -0.4px; }
+.top-bar .sub { font-size: 11px; opacity: 0.55; font-weight: 400; letter-spacing: -0.2px; }
 
-.layout { display: grid; grid-template-columns: 360px 1fr; min-height: calc(100vh - 46px); }
+.layout { display: grid; grid-template-columns: 380px 1fr; min-height: calc(100vh - 52px); }
 
-/* ── 왼쪽 입력 패널 */
-.input-panel { background: #fff; border-right: 1px solid #dde3ed; overflow-y: auto; display: flex; flex-direction: column; }
-.ip-section { padding: 14px 16px 10px; border-bottom: 1px solid #edf2f7; }
+/* ── 왼쪽 입력 패널: C의 넉넉한 패딩 + 깔끔한 스크롤바 */
+.input-panel { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; }
+.input-panel::-webkit-scrollbar { width: 4px; }
+.input-panel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+.ip-section { padding: 18px 20px 14px; border-bottom: 1px solid var(--border-light); }
 .ip-section:last-child { border-bottom: none; }
-.ip-sec-title { font-size: 11px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-.ip-sec-title .ico { font-size: 13px; }
+/* C: 액센트 컬러 섹션 타이틀 + 넓은 letter-spacing */
+.ip-sec-title { font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 13px; display: flex; align-items: center; gap: 7px; }
+.ip-sec-title .ico { font-size: 13px; opacity: 0.7; }
 
-.field { margin-bottom: 10px; position: relative; }
+.field { margin-bottom: 13px; position: relative; }
 .field:last-child { margin-bottom: 0; }
-.field label { display: flex; align-items: center; gap-4px; font-size: 11px; color: #718096; font-weight: 600; margin-bottom: 3px; }
-.field label .tip-icon { cursor: pointer; font-size: 12px; margin-left: 4px; opacity: 0.6; }
-.field label .tip-icon:hover { opacity: 1; }
+.field label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-sub); font-weight: 600; margin-bottom: 5px; }
+.field label .tip-icon { cursor: pointer; font-size: 12px; margin-left: 4px; opacity: 0.4; transition: opacity var(--transition); }
+.field label .tip-icon:hover { opacity: 0.9; }
+/* C: 1px 보더 + 순백 배경 (가독성 최적) */
 .field input, .field select, .field textarea {
-  width: 100%; padding: 7px 9px; border: 1px solid #cbd5e0; border-radius: 6px;
-  font-size: 13px; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s;
-  background: #fafbfc;
+  width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-xs);
+  font-size: 13px; font-family: inherit; transition: all var(--transition);
+  background: var(--surface); color: var(--text);
 }
 .field textarea { resize: vertical; min-height: 60px; }
 .field input:focus, .field select:focus, .field textarea:focus {
-  outline: none; border-color: #4299e1; box-shadow: 0 0 0 2px rgba(66,153,225,0.15); background: #fff;
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(30,58,95,0.08); background: var(--surface);
 }
-.field .sub-hint { font-size: 11px; color: #a0aec0; margin-top: 2px; }
-.field .val-hint { font-size: 11px; color: #3182ce; margin-top: 2px; font-weight: 600; }
-.field .warn-hint { font-size: 11px; color: #e53e3e; margin-top: 2px; font-weight: 600; background: #fff5f5; padding: 3px 6px; border-radius: 4px; }
+.field input::placeholder, .field textarea::placeholder { color: var(--text-dim); }
+.field .sub-hint { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+.field .val-hint { font-size: 11px; color: var(--accent); margin-top: 3px; font-weight: 600; }
+.field .warn-hint { font-size: 11px; color: var(--red); margin-top: 3px; font-weight: 600; background: var(--red-bg); padding: 4px 8px; border-radius: var(--radius-xs); }
 
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 
-/* 토글 배지 */
-.badge-grid { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
-.badge { padding: 4px 9px; border-radius: 10px; font-size: 11px; font-weight: 600; cursor: pointer;
-  border: 1.5px solid #e2e8f0; background: #f7fafc; color: #718096; transition: all 0.15s; user-select: none; }
-.badge:hover { border-color: #a0aec0; }
-.badge.on { background: #2b6cb0; color: #fff; border-color: #2b6cb0; }
-.badge.on-warn { background: #e53e3e; color: #fff; border-color: #e53e3e; }
-.badge.on-yellow { background: #d69e2e; color: #fff; border-color: #d69e2e; }
+/* 토글 배지: 기본의 pill 형태 + C의 절제된 hover */
+.badge-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.badge { padding: 5px 11px; border-radius: 16px; font-size: 11px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-sub);
+  transition: all var(--transition); user-select: none; }
+.badge:hover { border-color: var(--accent); color: var(--accent); }
+.badge.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.badge.on-warn { background: var(--red); color: #fff; border-color: var(--red); }
+.badge.on-yellow { background: var(--amber); color: #fff; border-color: var(--amber); }
 
-/* 툴팁 */
+/* C: 액센트 컬러 툴팁 + 기본의 애니메이션 */
 .tooltip-box {
   display: none; position: absolute; left: 0; top: 100%; z-index: 100;
-  background: #2d3748; color: #e2e8f0; font-size: 11px; line-height: 1.6;
-  padding: 10px 12px; border-radius: 7px; width: 300px; max-width: calc(100vw - 32px); box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-  white-space: pre-wrap; margin-top: 4px;
+  background: var(--accent); color: #e5eaf2; font-size: 11px; line-height: 1.7;
+  padding: 12px 14px; border-radius: var(--radius-sm); width: 320px; max-width: calc(100vw - 32px);
+  box-shadow: var(--shadow-lg); white-space: pre-wrap; margin-top: 6px;
+  animation: tooltipIn 0.15s ease-out;
 }
+@keyframes tooltipIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
 .row2 .field:last-child .tooltip-box { left: auto; right: 0; }
 .field:hover .tooltip-box, .field .tip-icon:hover + .tooltip-box { display: block; }
 
-/* 하단 버튼 */
-.ip-footer { padding: 12px 16px; background: #fff; border-top: 1px solid #e2e8f0; position: sticky; bottom: 0; }
-.btn-calc { width: 100%; padding: 11px; background: #1e3a5f; color: white; border: none; border-radius: 8px;
-  font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.15s; font-family: inherit; }
-.btn-calc:hover { background: #2a4a7f; }
-.btn-reset { width: 100%; padding: 7px; background: none; color: #a0aec0; border: 1px solid #e2e8f0;
-  border-radius: 7px; font-size: 12px; cursor: pointer; margin-top: 6px; font-family: inherit; }
-.btn-reset:hover { color: #718096; }
+/* 하단 버튼: 기본의 그라데이션 + C의 절제된 shadow */
+.ip-footer { padding: 14px 20px; background: var(--surface); border-top: 1px solid var(--border-light); position: sticky; bottom: 0; z-index: 10; }
+.btn-calc { width: 100%; padding: 13px; background: linear-gradient(135deg, var(--accent-dark), var(--accent)); color: white; border: none; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 700; cursor: pointer; transition: all var(--transition); font-family: inherit;
+  box-shadow: 0 2px 6px rgba(30,58,95,0.2); letter-spacing: -0.2px; }
+.btn-calc:hover { box-shadow: 0 4px 12px rgba(30,58,95,0.3); transform: translateY(-1px); }
+.btn-calc:active { transform: scale(0.99); }
+.btn-reset { width: 100%; padding: 8px; background: none; color: var(--text-dim); border: 1px solid var(--border);
+  border-radius: var(--radius-xs); font-size: 12px; cursor: pointer; margin-top: 8px; font-family: inherit;
+  transition: all var(--transition); }
+.btn-reset:hover { color: var(--text-sub); border-color: #9ca3af; }
 
-/* ── 오른쪽 결과 패널 */
-.result-panel { overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+/* ── 오른쪽 결과 패널: C의 넉넉한 패딩 */
+.result-panel { overflow-y: auto; padding: 26px 30px; display: flex; flex-direction: column; gap: 22px; background: var(--bg); }
+.result-panel::-webkit-scrollbar { width: 4px; }
+.result-panel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
 
 .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center;
-  flex: 1; color: #a0aec0; gap: 12px; text-align: center; min-height: 400px; }
-.placeholder .ph-icon { font-size: 52px; }
+  flex: 1; color: var(--text-dim); gap: 16px; text-align: center; min-height: 400px; }
+.placeholder .ph-icon { font-size: 48px; opacity: 0.4; }
 
-/* 결과 카드 */
-.rec-title { font-size: 12px; font-weight: 700; color: #4a5568; text-transform: uppercase;
-  letter-spacing: 0.5px; margin-bottom: 10px; }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+/* 결과 카드: C의 border-left 강조 + 기본의 은은한 배경색 */
+.rec-title { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 14px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
 
-.card { border-radius: 10px; padding: 15px; border: 2px solid #e2e8f0; background: #f7fafc;
-  position: relative; transition: box-shadow 0.15s; }
-.card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-.card.rank1 { border-color: #38a169; background: #f0fff4; }
-.card.rank2 { border-color: #3182ce; background: #ebf8ff; }
-.card.rank3 { border-color: #805ad5; background: #faf5ff; }
-.card.ineligible { border-color: #fc8181; background: #fff5f5; opacity: 0.75; }
+.card { border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); background: var(--surface);
+  position: relative; transition: all var(--transition); }
+.card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+/* 핵심: border-left 3px 강조(C) + 은은한 배경색(기본) 결합 */
+.card.rank1 { border-color: var(--green); border-left: 3px solid var(--green); background: var(--green-bg); }
+.card.rank2 { border-color: var(--blue); border-left: 3px solid var(--blue); background: var(--blue-bg); }
+.card.rank3 { border-color: var(--purple); border-left: 3px solid var(--purple); background: var(--purple-bg); }
+.card.ineligible { border-color: #e5e5e5; background: var(--surface); opacity: 0.6; }
 
-.card-ribbon { position: absolute; top: -10px; left: 12px; padding: 2px 9px;
-  border-radius: 9px; font-size: 10px; font-weight: 700; }
-.rank1 .card-ribbon { background: #38a169; color: #fff; }
-.rank2 .card-ribbon { background: #3182ce; color: #fff; }
-.rank3 .card-ribbon { background: #805ad5; color: #fff; }
+/* 기본의 pill 리본 + C의 미니멀 shadow */
+.card-ribbon { position: absolute; top: -10px; left: 14px; padding: 3px 10px;
+  border-radius: 14px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; }
+.rank1 .card-ribbon { background: var(--green); color: #fff; box-shadow: 0 1px 4px rgba(5,150,105,0.25); }
+.rank2 .card-ribbon { background: var(--blue); color: #fff; box-shadow: 0 1px 4px rgba(37,99,235,0.25); }
+.rank3 .card-ribbon { background: var(--purple); color: #fff; box-shadow: 0 1px 4px rgba(124,58,237,0.25); }
 
-.card-name { font-size: 14px; font-weight: 700; margin: 6px 0 10px; }
-.rank1 .card-name { color: #276749; }
-.rank2 .card-name { color: #2b6cb0; }
-.rank3 .card-name { color: #553c9a; }
-.ineligible .card-name { color: #c53030; }
+/* C: 굵은 font-weight + 넉넉한 간격 */
+.card-name { font-size: 16px; font-weight: 800; margin: 10px 0 14px; letter-spacing: -0.4px; }
+.rank1 .card-name { color: var(--green-dark); }
+.rank2 .card-name { color: var(--blue-dark); }
+.rank3 .card-name { color: var(--purple-dark); }
+.ineligible .card-name { color: var(--text-dim); }
 
-.kv { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
-.kv .k { color: #718096; }
+.kv { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; padding: 3px 0; }
+.kv .k { color: var(--text-sub); }
 .kv .v { font-weight: 700; }
-.kv .v.g { color: #38a169; }
-.kv .v.b { color: #3182ce; }
-.kv .v.r { color: #e53e3e; }
+.kv .v.g { color: var(--green); }
+.kv .v.b { color: var(--blue); }
+.kv .v.r { color: var(--red); }
 
-.card-desc { font-size: 11px; color: #718096; margin-top: 8px; padding-top: 8px;
-  border-top: 1px solid rgba(0,0,0,0.06); line-height: 1.55; }
-.card-caution { font-size: 11px; color: #744210; background: rgba(255,193,7,0.12);
-  border-radius: 5px; padding: 5px 7px; margin-top: 6px; line-height: 1.5; }
+.card-desc { font-size: 11px; color: var(--text-sub); margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--border-light); line-height: 1.7; }
+.card-caution { font-size: 11px; color: var(--amber-dark); background: var(--amber-bg);
+  border-radius: var(--radius-xs); padding: 7px 10px; margin-top: 8px; line-height: 1.6; }
 
-/* 섹션 박스 */
-.sbox { background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; padding: 16px; }
-.sbox h3 { font-size: 13px; font-weight: 700; color: #2d3748; margin-bottom: 12px;
-  padding-bottom: 8px; border-bottom: 1px solid #edf2f7; display: flex; align-items: center; gap: 6px; }
+/* C: 미니멀 섹션 박스 (그림자 제거) */
+.sbox { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; box-shadow: none; }
+.sbox h3 { font-size: 13px; font-weight: 800; color: var(--text); margin-bottom: 14px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 7px; letter-spacing: -0.2px; }
 
 /* 상세 계산 2열 */
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.drow { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
-.drow .dl { color: #718096; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.drow { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; padding: 3px 0; }
+.drow .dl { color: var(--text-sub); }
 .drow .dv { font-weight: 600; }
-.drow.dtotal { border-top: 1px solid #edf2f7; padding-top: 5px; margin-top: 3px; }
-.drow.dtotal .dl { font-weight: 700; color: #2d3748; }
-.drow.dtotal .dv { font-size: 13px; }
+/* C: 총계 행에 액센트 컬러 */
+.drow.dtotal { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px; }
+.drow.dtotal .dl { font-weight: 800; color: var(--text); }
+.drow.dtotal .dv { font-size: 13px; color: var(--accent); }
 
-/* 비교표 */
-.ctable { width: 100%; border-collapse: collapse; font-size: 12px; }
-.ctable th { background: #2d3748; color: #fff; padding: 8px 10px; text-align: center; }
+/* C: 액센트 컬러 테이블 헤더 + 기본의 테이블 구조 */
+.ctable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); }
+.ctable th { background: var(--accent); color: #fff; padding: 10px 13px; text-align: center; font-weight: 600; font-size: 11px; letter-spacing: 0.3px; }
 .ctable th:first-child { text-align: left; }
-.ctable td { padding: 7px 10px; border-bottom: 1px solid #edf2f7; text-align: center; }
+.ctable td { padding: 9px 13px; border-bottom: 1px solid var(--border-light); text-align: center; }
 .ctable tr:last-child td { border-bottom: none; }
-.ctable tr:nth-child(even) td { background: #f7fafc; }
-.ctable td:first-child { text-align: left; color: #4a5568; font-weight: 600; }
-.ty { color: #38a169; font-weight: 700; }
-.tn { color: #e53e3e; font-weight: 700; }
-.tc { color: #d69e2e; font-weight: 700; }
+.ctable tr:nth-child(even) td { background: var(--surface-alt); }
+.ctable td:first-child { text-align: left; color: var(--text); font-weight: 600; }
+.ty { color: var(--green); font-weight: 700; }
+.tn { color: var(--red); font-weight: 700; }
+.tc { color: var(--amber); font-weight: 700; }
 
-/* 경고 박스 */
-.warnbox { background: #fffbeb; border: 1px solid #f6ad55; border-radius: 8px; padding: 12px 14px; }
-.warnbox h4 { font-size: 12px; font-weight: 700; color: #744210; margin-bottom: 7px; }
+/* C: border-left 경고 박스 */
+.warnbox { background: var(--amber-bg); border: 1px solid #fbbf24; border-left: 3px solid var(--amber); border-radius: var(--radius); padding: 14px 16px; }
+.warnbox h4 { font-size: 12px; font-weight: 700; color: var(--amber-dark); margin-bottom: 8px; }
 .warnbox ul { list-style: none; }
-.warnbox li { font-size: 11px; color: #744210; padding: 3px 0 3px 16px; position: relative; line-height: 1.55; }
+.warnbox li { font-size: 11px; color: var(--amber-dark); padding: 4px 0 4px 18px; position: relative; line-height: 1.7; }
 .warnbox li::before { content: "⚠"; position: absolute; left: 0; font-size: 10px; }
 
-/* 상담일지 섹션 */
+/* 자격미달 */
+.inelig-hard { background: var(--red-bg); border: 1px solid #fca5a5; border-left: 4px solid var(--red); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.inelig-hard h3 { font-size: 15px; font-weight: 700; color: var(--red-dark); margin-bottom: 10px; }
+.inelig-hard p { font-size: 13px; color: var(--red-dark); line-height: 1.7; margin-bottom: 6px; }
+.inelig-hard .alt { font-size: 12px; color: #065f46; background: #ecfdf5; border-radius: var(--radius-xs); padding: 10px 12px; margin-top: 10px; line-height: 1.6; }
+.inelig-soft { background: #fef9ee; border: 1px solid #fde68a; border-left: 4px solid var(--amber); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; }
+.inelig-soft h4 { font-size: 13px; font-weight: 700; color: var(--amber-dark); margin-bottom: 6px; }
+.inelig-soft p { font-size: 12px; color: var(--amber-dark); line-height: 1.6; }
+.inelig-soft .note { font-size: 11px; color: var(--text-sub); margin-top: 6px; font-style: italic; }
+
+/* C: 깔끔한 상담일지 */
 .journal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.journal-item { background: #f7fafc; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; }
-.journal-item .ji-label { font-size: 11px; font-weight: 700; color: #4a5568; margin-bottom: 6px; }
-.journal-item .ji-val { font-size: 12px; color: #2d3748; line-height: 1.6; white-space: pre-wrap; }
-.journal-item .ji-empty { font-size: 12px; color: #a0aec0; font-style: italic; }
+.journal-item { background: var(--surface); border-radius: var(--radius-sm); padding: 15px; border: 1px solid var(--border); }
+/* C: 액센트 컬러 라벨 */
+.journal-item .ji-label { font-size: 10px; font-weight: 700; color: var(--accent); margin-bottom: 7px; text-transform: uppercase; letter-spacing: 0.5px; }
+.journal-item .ji-val { font-size: 12px; color: var(--text); line-height: 1.8; white-space: pre-wrap; }
+.journal-item .ji-empty { font-size: 12px; color: var(--text-dim); font-style: italic; }
 
 /* 체크리스트 */
 .checklist { list-style: none; }
-.checklist li { font-size: 12px; color: #4a5568; padding: 4px 0 4px 20px; position: relative;
-  border-bottom: 1px solid #edf2f7; line-height: 1.5; }
+.checklist li { font-size: 12px; color: var(--text-sub); padding: 7px 0 7px 22px; position: relative;
+  border-bottom: 1px solid var(--border-light); line-height: 1.6; }
 .checklist li:last-child { border-bottom: none; }
-.checklist li::before { content: "□"; position: absolute; left: 2px; font-size: 13px; }
-.checklist li.important::before { content: "☑"; color: #e53e3e; }
+.checklist li::before { content: "□"; position: absolute; left: 2px; font-size: 13px; color: var(--text-dim); }
+/* C: 중요 체크 → 액센트 컬러 */
+.checklist li.important::before { content: "☑"; color: var(--accent); }
 
-/* 제도 선택 & 상담내용 */
-.program-select-box { background: #fffdf7; border: 2px solid #d69e2e; border-radius: 10px; padding: 16px; }
-.program-select-box h3 { font-size: 13px; font-weight: 700; color: #744210; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-.program-select-box select { padding: 8px 12px; border: 2px solid #d69e2e; border-radius: 6px; font-size: 14px; font-weight: 700; font-family: inherit; background: #fff; color: #744210; cursor: pointer; min-width: 200px; }
-.program-select-box select:focus { outline: none; box-shadow: 0 0 0 2px rgba(214,158,46,0.3); }
-.narrative-box { margin-top: 12px; }
-.narrative-box label { font-size: 11px; font-weight: 700; color: #718096; margin-bottom: 4px; display: block; }
-.narrative-box textarea { width: 100%; min-height: 200px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; font-family: inherit; line-height: 1.7; resize: vertical; background: #fff; }
-.narrative-box textarea:focus { outline: none; border-color: #4299e1; box-shadow: 0 0 0 2px rgba(66,153,225,0.15); }
-.narrative-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-.narrative-row .mini-box { }
-.narrative-row .mini-box label { font-size: 11px; font-weight: 700; color: #718096; margin-bottom: 3px; display: block; }
-.narrative-row .mini-box input { width: 100%; padding: 7px 9px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: inherit; background: #fff; }
-.narrative-row .mini-box input:focus { outline: none; border-color: #4299e1; }
+/* C: border-left 제도 선택 박스 + 기본의 앰버 톤 유지 */
+.program-select-box { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 18px; }
+.program-select-box h3 { font-size: 13px; font-weight: 800; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+.program-select-box select { padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-xs); font-size: 14px; font-weight: 700; font-family: inherit; background: var(--surface); color: var(--accent); cursor: pointer; min-width: 220px; transition: all var(--transition); }
+.program-select-box select:focus { outline: none; box-shadow: 0 0 0 3px rgba(30,58,95,0.08); border-color: var(--accent); }
+.narrative-box { margin-top: 14px; }
+.narrative-box label { font-size: 11px; font-weight: 700; color: var(--text-sub); margin-bottom: 5px; display: block; }
+.narrative-box textarea { width: 100%; min-height: 200px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-xs); font-size: 12px; font-family: inherit; line-height: 1.8; resize: vertical; background: var(--surface); }
+.narrative-box textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(30,58,95,0.08); }
+
+/* ── 저장 버튼 */
+.btn-save { width: 100%; padding: 10px; background: #059669; color: white; border: none; border-radius: var(--radius-xs);
+  font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all var(--transition); }
+.btn-save:hover { background: #047857; }
+.btn-save:disabled { background: #9ca3af; cursor: not-allowed; }
+.btn-history { width: 100%; padding: 8px; background: none; color: var(--accent); border: 1px solid var(--accent);
+  border-radius: var(--radius-xs); font-size: 12px; cursor: pointer; font-family: inherit; transition: all var(--transition); }
+.btn-history:hover { background: rgba(30,58,95,0.05); }
+
+/* ── 이력 모달 */
+.modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center; }
+.modal-overlay.active { display:flex; }
+.modal { background:var(--surface); border-radius:var(--radius); width:90%; max-width:900px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+.modal-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.modal-header h2 { font-size:16px; font-weight:800; color:var(--accent); }
+.modal-close { background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-dim); padding:4px 8px; }
+.modal-body { overflow-y:auto; padding:16px 20px; flex:1; }
+.modal-search { display:flex; gap:8px; margin-bottom:14px; }
+.modal-search input { flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius-xs); font-size:13px; font-family:inherit; }
+.modal-search button { padding:8px 16px; background:var(--accent); color:white; border:none; border-radius:var(--radius-xs); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.history-table { width:100%; border-collapse:collapse; font-size:12px; }
+.history-table th { background:var(--bg); padding:8px 10px; text-align:left; font-weight:700; color:var(--text-sub); border-bottom:2px solid var(--border); position:sticky; top:0; }
+.history-table td { padding:8px 10px; border-bottom:1px solid var(--border-light); color:var(--text); }
+.history-table tr:hover td { background:rgba(30,58,95,0.03); }
+.history-table .td-name { font-weight:700; color:var(--accent); cursor:pointer; }
+.history-table .td-name:hover { text-decoration:underline; }
+.save-status { font-size:11px; text-align:center; margin-top:4px; padding:4px; border-radius:var(--radius-xs); }
+.save-status.success { color:#059669; background:#ecfdf5; }
+.save-status.error { color:#dc2626; background:#fef2f2; }
 
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
   .detail-grid, .journal-grid { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: 1fr; }
+  .modal { width: 95%; max-height: 90vh; }
 }
 </style>
 </head>
@@ -192,7 +274,7 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
     <span>📋</span>
     <h1>채무조정 상담 도구</h1>
   </div>
-  <span class="sub">전화 상담 실시간 입력용 · 태성과장 유품 기반</span>
+  <span class="sub">전화 상담 실시간 입력용</span>
 </div>
 
 <div class="layout">
@@ -204,20 +286,25 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
   <div class="ip-section">
     <div class="ip-sec-title"><span class="ico">👤</span> 신청인 기본 정보</div>
 
-    <div class="field">
-      <label>이름 / 연락처</label>
-      <input type="text" id="f_name" placeholder="홍길동 / 010-0000-0000">
+    <div class="row2">
+      <div class="field">
+        <label>이름</label>
+        <input type="text" id="f_name" placeholder="홍길동">
+      </div>
+      <div class="field">
+        <label>연락처</label>
+        <input type="text" id="f_phone" placeholder="010-0000-0000">
+      </div>
     </div>
     <div class="row2">
       <div class="field">
-        <label>출생연도 <span class="tip-icon" title="만 39세 이하면 청년회생 가능, 만 60세 이상이면 파산 유리">ℹ</span></label>
+        <label>출생연도 <span class="tip-icon" title="만 29세 이하면 청년회생 가능 (서울회생법원 등 일부 법원만 적용), 만 60세 이상이면 파산 유리">ℹ</span></label>
         <input type="number" id="f_birth" placeholder="예: 1985" min="1930" max="2010" oninput="onBirthChange()">
         <div class="val-hint" id="h_age"></div>
       </div>
       <div class="field">
-        <label>거주지 / 관할법원</label>
-        <input type="text" id="f_region" placeholder="서울 강남 / 서울회생법원">
-        <div class="sub-hint">거주지 기준 담당 법원 확인</div>
+        <label>거주지</label>
+        <input type="text" id="f_region" placeholder="예: 서울 강남">
       </div>
     </div>
     <div class="row2">
@@ -307,9 +394,23 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
         <div class="sub-hint" id="h_sp_income"></div>
       </div>
     </div>
-    <div class="field">
-      <label>소득 형태</label>
-      <input type="text" id="f_income_type" placeholder="예: 식당 근로 월 250만 / 배달 부업 50만">
+    <div class="row2">
+      <div class="field">
+        <label>소득 유형</label>
+        <select id="f_income_type">
+          <option value="">선택</option>
+          <option value="근로소득">근로소득</option>
+          <option value="사업소득">사업소득</option>
+          <option value="일용직">일용직</option>
+          <option value="프리랜서">프리랜서</option>
+          <option value="연금">연금</option>
+          <option value="무직">무직</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>소득 상세</label>
+        <input type="text" id="f_income_detail" placeholder="예: 식당 근무 / 배달 부업">
+      </div>
     </div>
   </div>
 
@@ -384,9 +485,9 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
   <div class="ip-section">
     <div class="ip-sec-title"><span class="ico">🏠</span> 재산</div>
     <div class="field">
-      <label>재산 총액 (원) <span class="tip-icon">ℹ</span>
-        <div class="tooltip-box">환가 대상 전부 확인:
-1. 부동산 (소유시 환가, 임대차는 일부)
+      <label>담보대출 제외 재산 총액 (원) <span class="tip-icon">ℹ</span>
+        <div class="tooltip-box">담보대출 제외한 환가 대상 전부 확인:
+1. 부동산 (담보대출 차감 후 잔여가치)
 2. 차량 (환가)
 3. 적금 (일부 보호 후 환가)
 4. 보험 해약환급금 (일부 보호 후 환가)
@@ -414,14 +515,16 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
     <div class="ip-sec-title"><span class="ico">⚑</span> 특수 상황</div>
     <div class="badge-grid">
       <span class="badge" id="b_biz"      onclick="togB('biz')"      >사업자·폐업</span>
-      <span class="badge" id="b_young"    onclick="togB('young')"    >청년 (39세↓)</span>
+      <span class="badge" id="b_young"    onclick="togB('young')"    >청년 (29세↓)</span>
       <span class="badge" id="b_senior"   onclick="togB('senior')"   >고령 (60세↑)</span>
       <span class="badge" id="b_gambling" onclick="togB('gambling')" >도박·코인·주식</span>
       <span class="badge" id="b_seizure"  onclick="togB('seizure')"  >가압류</span>
-      <span class="badge" id="b_longterm" onclick="togB('longterm')" >장기연체[0101]</span>
       <span class="badge" id="b_health"   onclick="togB('health')"   >건강 문제</span>
       <span class="badge" id="b_welfare"  onclick="togB('welfare')"  >기초수급</span>
-      <span class="badge" id="b_coowner"  onclick="togB('coowner')"  >공동대표</span>
+      <span class="badge" id="b_single_parent" onclick="togB('single_parent')">한부모가정</span>
+      <span class="badge" id="b_divorce"  onclick="togB('divorce')"  >이혼</span>
+      <span class="badge" id="b_tax_arrear" onclick="togB('tax_arrear')">세금 체납</span>
+      <span class="badge" id="b_fraud_victim" onclick="togB('fraud_victim')">사기 피해</span>
     </div>
     <div id="h_badge_warn" style="margin-top:8px;"></div>
   </div>
@@ -441,9 +544,33 @@ body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #e
       <button class="btn-reset" style="flex:1" onclick="doReset()">↺ 초기화</button>
       <button class="btn-reset" id="btn-export" style="flex:1;display:none;color:#2b6cb0;border-color:#bee3f8;" onclick="exportExcel()">📥 엑셀 내보내기</button>
     </div>
+    <button class="btn-save" id="btn-save" style="display:none;margin-top:6px;" onclick="saveToSheet()">💾 상담 저장 (Google Sheets)</button>
+    <div id="save-status"></div>
+    <button class="btn-history" style="margin-top:6px;" onclick="openHistory()">📋 상담 이력 조회</button>
   </div>
 </div>
 <!-- ════════ /입력 패널 ════════ -->
+
+<!-- ════════ 이력 조회 모달 ════════ -->
+<div class="modal-overlay" id="history-modal" onclick="if(event.target===this)closeHistory()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📋 상담 이력</h2>
+      <button class="modal-close" onclick="closeHistory()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-search">
+        <input type="text" id="history-search" placeholder="이름, 연락처, 제도 등 검색..." onkeydown="if(event.key==='Enter')searchHistory()">
+        <button onclick="searchHistory()">검색</button>
+        <button onclick="document.getElementById('history-search').value='';loadHistory()" style="background:var(--text-dim);">전체</button>
+      </div>
+      <div id="history-list">
+        <p style="text-align:center;color:var(--text-dim);padding:40px;">불러오는 중...</p>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ════════ /이력 조회 모달 ════════ -->
 
 
 <!-- ════════ 결과 패널 ════════ -->
@@ -465,13 +592,13 @@ const LIVING_MIN = {1:1025695,1.5:1352706,2:1679717,2.5:1911665.5,3:2143614,3.5:
 const LIVING_BANKRUPT = {1:1435208, 2:2359595}; // 파산 기준 생계비 (25년)
 
 const flags = {};
-['biz','young','senior','gambling','seizure','longterm','health','welfare','coowner'].forEach(k => flags[k]=false);
+['biz','young','senior','gambling','seizure','health','welfare','single_parent','divorce','tax_arrear','fraud_victim'].forEach(k => flags[k]=false);
 
 function togB(k) {
   flags[k] = !flags[k];
   const el = document.getElementById('b_'+k);
-  const warnKeys = ['gambling','seizure'];
-  const yellowKeys = ['young','senior','health'];
+  const warnKeys = ['gambling','seizure','fraud_victim'];
+  const yellowKeys = ['young','senior','health','single_parent','divorce','tax_arrear'];
   if (!flags[k]) { el.className='badge'; }
   else if (warnKeys.includes(k)) { el.className='badge on-warn'; }
   else if (yellowKeys.includes(k)) { el.className='badge on-yellow'; }
@@ -484,9 +611,11 @@ function updateBadgeWarnings() {
   if (flags.gambling) lines.push('⚠ 도박·코인·주식 이력 → 최근 대출 사용처 반드시 확인. 재산으로 산정될 수 있음. 파산 면책 불허가 사유 해당 가능.');
   if (flags.seizure) lines.push('⚠ 가압류 → 새출발기금 신청 전 가압류 해제 절차 필요 (약 1개월 소요).');
   if (flags.senior) lines.push('ℹ 만 60세 이상 → 소득 낮을 경우 파산이 유리할 수 있음.');
-  if (flags.young) lines.push('ℹ 만 39세 이하 → 개인회생 시 청년회생(변제기간 24개월) 적용 가능.');
-  if (flags.longterm) lines.push('ℹ 장기연체코드[0101] → credit4u.or.kr에서 신용정보조회서 발급 확인 후 새출발기금 부실차주 신청.');
-  if (flags.coowner) lines.push('ℹ 공동대표 → 새출발기금 채무조정 각각 신청 가능 (인터넷 신청 불가, 방문 신청 필요).');
+  if (flags.young) lines.push('ℹ 만 34세 이하 → 개인회생 시 청년회생(변제기간 24개월) 적용 가능. 서울회생법원·부산·수원 등 일부 법원만 적용, 지방법원은 미적용 가능.');
+  if (flags.single_parent) lines.push('ℹ 한부모가정 → 양육 부담으로 변제능력 부족 소명에 유리. 파산 시 감안 사유.');
+  if (flags.divorce) lines.push('ℹ 이혼 → 최근 2년 이내 이혼 시 재산분할 내역 확인 필요. 양육비는 비면책채권(파산 면책 불가).');
+  if (flags.tax_arrear) lines.push('ℹ 세금 체납 → 비면책채권(파산해도 면책 불가). 개인회생 시 우선채권으로 별도 변제 필요.');
+  if (flags.fraud_victim) lines.push('⚠ 사기 피해(보이스피싱·투자사기 등) → 채무 경위 소명 필요. 과실 여부에 따라 면책 판단에 영향.');
   const el = document.getElementById('h_badge_warn');
   el.innerHTML = lines.map(l => `<div style="font-size:11px;padding:2px 0;color:${l.startsWith('⚠')?'#c05621':'#2b6cb0'}">${l}</div>`).join('');
 }
@@ -496,7 +625,7 @@ function onBirthChange() {
   if (!yr || yr < 1930 || yr > 2010) { document.getElementById('h_age').textContent=''; return; }
   const age = calcAge(yr);
   document.getElementById('h_age').textContent = `만 ${age}세 (${yr}년생)`;
-  if (age <= 39 && !flags.young) { togB('young'); }
+  if (age <= 34 && !flags.young) { togB('young'); }
   if (age >= 60 && !flags.senior) { togB('senior'); }
 }
 
@@ -557,6 +686,11 @@ function onLiveCalc() {
       }
     }
   } else { wEl.style.display='none'; }
+
+  // 세금·4대보험 체납 → 자동 뱃지
+  const taxVal = +document.getElementById('f_tax').value||0;
+  if (taxVal > 0 && !flags.tax_arrear) { togB('tax_arrear'); }
+  else if (taxVal === 0 && flags.tax_arrear) { togB('tax_arrear'); }
 }
 
 document.getElementById('f_prev_proc').addEventListener('change', onLiveCalc);
@@ -575,7 +709,9 @@ function gn(id) { return parseFloat(document.getElementById(id).value)||0; }
 // ── 메인 계산
 function doCalc() {
   const totalDebt = gn('f_total_debt');
-  if (!totalDebt) { alert('총 채무액을 입력해 주세요.'); return; }
+  const _taxCheck = gn('f_tax');
+  // 총채무 0이지만 세금 입력 있으면 통과 (자격미달 판단용)
+  if (!totalDebt && !_taxCheck) { alert('총 채무액을 입력해 주세요.'); return; }
 
   const income      = gn('f_income');
   const spIncome    = gn('f_sp_income');
@@ -611,33 +747,46 @@ function doCalc() {
   const rehoExpected  = Math.max(repayIncome, repayAsset);
   const rehoMonthly   = disposable > 0 ? rehoExpected / 36 : 0;
   const rehoReduce    = totalDebt > 0 ? (totalDebt - rehoExpected) / totalDebt : 0;
-  const youngMonths   = (age !== null && age <= 39) ? 24 : null;
+  const youngMonths   = (age !== null && age <= 34) ? 24 : null;
 
-  // ── 새출발기금 계산 (태성과장 공식: 채무-(채무-재산)*0.8)
-  const saefundBurden  = partnerDebt - (partnerDebt - assets) * 0.8;
-  const saefundMonthly = Math.max(0, saefundBurden) / 120;
-  const saefundReduce  = partnerDebt > 0 ? (partnerDebt - Math.max(0, saefundBurden)) / partnerDebt : 0;
+  // ── 새출발기금 계산
+  // 연체 90일 이상(부실차주): 원금 탕감 적용 (공식: 채무-(채무-재산)*0.8), 최장 120개월
+  // 연체 90일 미만(부실우려): 이자·연체료 감면 위주, 원금 감면 없음, 최장 60개월
+  const isBadDebtor = overdue >= 90;
+  const saefundBurden  = isBadDebtor
+    ? partnerDebt - (partnerDebt - assets) * 0.8
+    : partnerDebt; // 부실우려: 원금 감면 없이 이자·연체료만 감면
+  const saefundPeriod = isBadDebtor ? 120 : 60;
+  const saefundMonthly = Math.max(0, saefundBurden) / saefundPeriod;
+  const saefundReduce  = isBadDebtor
+    ? (partnerDebt > 0 ? (partnerDebt - Math.max(0, saefundBurden)) / partnerDebt : 0)
+    : 0.3; // 부실우려: 이자·연체료 감면 약 30%
 
-  // ── 신용회복위원회 (이자·연체료 감면 중심, 원금 30~50%)
-  const shinReduce  = 0.3;
-  const shinBurden  = totalDebt * (1 - shinReduce);
-  const shinMonthly = shinBurden / 60;
+  // ── 신용회복위원회 (원금 탕감 없음, 이자 감면 + 장기 분할상환)
+  // 신속채무조정(30일↓): 이자 30~50% 인하, 최장 10년
+  // 프리워크아웃(31~89일): 이자 50% 인하, 최장 10년
+  const shinReduce  = 0; // 원금 감면 없음
+  const shinBurden  = totalDebt; // 원금 전액 상환
+  const shinPeriod  = 120; // 최장 10년(120개월)
+  const shinMonthly = shinBurden / shinPeriod;
 
   // ── 파산 판단
-  const canBankrupt = disposable < livingMin || income < livingBankrupt || flags.health || flags.senior;
+  // 소득 기준: 가용소득이 최저생계비 미만 또는 소득이 파산 기준 미만
+  // 상황 기준: 건강문제, 기초수급, 한부모가정, 고령(65세↑) → 변제능력 부족 소명 용이
+  const canBankrupt = disposable < 150000 || income < livingBankrupt || flags.health || flags.welfare || flags.single_parent || (flags.senior && age >= 65);
 
   // ── 경고 목록
   const warnings = [];
   if (recentRatio > 0.3) warnings.push(`최근 6개월 내 신규채무 비율 ${pct(recentRatio)}로 30% 초과 → 새출발기금은 해당 채무 제외 후 진행, 개인회생은 면책 불허가 사유 검토 필요.`);
   if (flags.gambling) warnings.push('도박·코인·주식 이력 → 최근 대출 사용처 파악 필수. 재산(청산가치)으로 반영될 수 있음. 파산 면책 불허가 해당 가능.');
   if (flags.seizure) warnings.push('가압류 있음 → 새출발기금 신청 전 가압류 해제 필요: 한달치 납부(실효방지) → 방문 → 유예신청(6개월) → 채권수정신고. 약 1개월 소요.');
-  if (flags.longterm) warnings.push('장기연체코드[0101] → credit4u.or.kr 접속 후 신용정보조회서 발급, 신용도판단정보 사유란 [0101] 확인 후 새출발기금 부실차주 신청.');
   if (prevProc === 'reho') warnings.push('기존 개인회생 면책 후 5년 이내 재신청 불가. 면책 시점 확인 필수.');
   if (prevProc === 'bankrupt') warnings.push('기존 파산 면책 후 7년 이내 재신청 불가. 면책 시점 확인 필수.');
   if (assets >= 650000000) warnings.push('재산 6억5천만원 이상 → 새출발기금 부실차주 신청 불가.');
-  if (tax > 0) warnings.push(`세금·4대보험 체납 ${fmtW(tax)} → 우선채권으로 회생 시 별도 변제 필요. 파산 시 비면책채권. 새출발기금 대상 외.`);
+  if (tax > 0 || flags.tax_arrear) warnings.push(`세금·4대보험 체납${tax > 0 ? ' ' + fmtW(tax) : ''} → 비면책채권(파산해도 면책 불가). 회생 시 우선채권으로 별도 변제 필요. 새출발기금 대상 외.`);
   if (personal > 0) warnings.push(`개인채무 ${fmtW(personal)} 확인됨 → 채권자 인적사항·차용 내역 파악 필수. 정보 불충분 시 법원이 채권 미인정 가능. 미리 고지 필요.`);
-  if (flags.coowner) warnings.push('공동대표 → 새출발기금은 각각 신청 가능하나 방문 신청만 가능 (인터넷 신청 불가).');
+  if (flags.divorce) warnings.push('이혼 → 최근 2년 이내 이혼 시 재산분할 내역 확인 필요. 양육비는 비면책채권(파산 면책 불가), 개인회생 시 별도 고려.');
+  if (flags.fraud_victim) warnings.push('사기 피해(보이스피싱·투자사기 등) → 채무 경위 소명 시 과실 판단에 유리. 면책 불허가 사유 해당 여부 검토.');
 
     // ── 옵션 생성 및 점수
   const options = [];
@@ -650,12 +799,24 @@ function doCalc() {
     if (recentRatio > 0.3) cautions.push(`6개월 내 채무 ${pct(recentRatio)} → 면책 불허가 검토`);
     if (!ok && disposable <= 0) cautions.push('가용자금이 음수 (생계비 부족) → 파산 검토');
     let score = 0;
+    const taxRatio = totalDebt > 0 ? tax / totalDebt : 0;
     if (ok) {
-      if (rehoReduce > 0.5) score += 30;
+      // 감면율 구간별 가산 (세분화)
+      if (rehoReduce > 0.9) score += 35;
+      else if (rehoReduce > 0.7) score += 30;
+      else if (rehoReduce > 0.5) score += 20;
+      else if (rehoReduce > 0.3) score += 15;
       if (rehoMonthly < income * 0.3) score += 20;
       if (youngMonths) score += 10;
       if (overdue < 90) score += 10;
+      // 개인채무(비금융) 포함 시 → 개인회생만 처리 가능
+      if (personal > 0) score += 10;
       score += 20; // 기본 가용
+      // 비면책채권(세금) 비율 → 회생해도 세금은 별도 납부
+      if (taxRatio > 0.3) { score -= 10; cautions.push(`비면책채권(세금) ${pct(taxRatio)} → 회생 변제금 외 세금 ${fmtW(tax)} 별도 납부`); }
+      else if (taxRatio > 0.1) { score -= 5; cautions.push(`비면책채권(세금) ${pct(taxRatio)} → 세금 ${fmtW(tax)} 별도 납부 필요`); }
+      // 가용소득 소액 양수 → 법원 인가 가능성 낮음
+      if (disposable > 0 && disposable < 150000) { score -= 15; cautions.push(`가용소득 월 ${fmtN(disposable)}원 → 법원 인가 가능성 낮음, 파산 검토`); }
     }
     options.push({ id:'reho', name:'개인회생', score, ok, cautions,
       stats:[
@@ -665,7 +826,7 @@ function doCalc() {
         ['예상 감면율', pct(rehoReduce), 'g'],
         ['변제기간', youngMonths ? `24개월(청년)/36개월` : '36개월', ''],
       ],
-      desc: `소득 기반 변제. 가용자금(월 변제금) ${fmtW(Math.abs(disposable))}${disposable<0?'(생계비 부족)':''}.${youngMonths?' 청년회생 적용 가능.':''}`
+      desc: `소득 기반 변제. 가용자금(월 변제금) ${fmtW(Math.abs(disposable))}${disposable<0?'(생계비 부족)':''}.${youngMonths?' 청년회생 적용 가능(만 34세 이하).':''}`
     });
   }
 
@@ -682,6 +843,20 @@ function doCalc() {
       if (saefundMonthly < income * 0.3) score += 20;
       if (overdue >= 90) score += 15;
       score += 15;
+      // 고령자 장기상환: 월 상환 감당 가능하면 감점 완화
+      if (age !== null && age >= 65) {
+        const affordable = income > 0 && saefundMonthly < income * 0.3;
+        if (age >= 70) score -= affordable ? 5 : 20;
+        else score -= affordable ? 0 : 10;
+      }
+      // 협약외 채무 비율 높으면 실질 감면 효과 미미
+      if (totalDebt > 0 && nonPartner / totalDebt > 0.5) score -= 10;
+      // 채무/소득 비율 극단적 → 상환 비현실적, 파산이 유리
+      if (income > 0) {
+        const dtiMonths = totalDebt / income;
+        if (dtiMonths > 600) score -= 35;
+        else if (dtiMonths > 300) score -= 20;
+      }
     }
     options.push({ id:'saefund', name:'새출발기금', score, ok, cautions,
       stats:[
@@ -689,31 +864,48 @@ function doCalc() {
         ['채무 부담액', fmtW(Math.max(0,saefundBurden)), 'b'],
         ['예상 감면율', pct(saefundReduce), 'g'],
         ['월 상환액', fmtN(saefundMonthly)+'원', ''],
-        ['상환기간', '120개월', ''],
+        ['상환기간', isBadDebtor ? '최장 120개월' : '최장 60개월', ''],
       ],
-      desc: `원금 80% 감면 기준. 소득 요건 없음. 연체 31일 이상 신청 가능.`
+      desc: isBadDebtor
+        ? `부실차주(90일↑ 연체): 원금 감면 적용. 소득 요건 없음.`
+        : `부실우려차주(31~89일 연체): 이자·연체료 감면 위주. 원금 감면 없음.`
     });
   }
 
-  // 신용회복위원회
+  // 신용회복위원회 (신속채무조정 / 프리워크아웃 / 개인워크아웃)
   {
-    const ok = overdue < 90 && totalDebt <= 1500000000;
+    const isWorkout = overdue >= 90; // 개인워크아웃 (90일↑)
+    const ok = totalDebt <= 1500000000; // 모든 연체 구간 대응 가능
     const cautions = [];
-    if (overdue >= 60) cautions.push('연체 3개월 접근 → 새출발기금 동시 검토');
+    if (overdue >= 60 && overdue < 90) cautions.push('연체 3개월 접근 → 새출발기금 동시 검토');
+    if (isWorkout) cautions.push('개인워크아웃 → 원금 최대 30~70% 감면, 이자 전액 감면 가능');
     let score = 0;
     if (ok) {
       if (totalDebt < 50000000) score += 25;
+      else if (totalDebt < 100000000) score += 15;
       if (overdue <= 31) score += 20;
+      else if (overdue < 90) score += 10;
+      // 소득 안정성 가산
+      if (income > living) score += 10;
+      // 소액채무 추가 가산
+      if (totalDebt < 10000000) score += 10;
       score += 10;
+      // 고액채무 + 원금감면 없는 경우(신속/프리워크아웃) → 실질 효과 미미
+      if (!isWorkout && totalDebt > 50000000) score -= 15;
     }
+    const shinDesc = overdue <= 31
+      ? '신속채무조정: 원금 감면 없음. 이자 인하 + 최장 10년 분할상환.'
+      : overdue < 90
+        ? '프리워크아웃: 원금 감면 없음. 이자 인하 + 최장 10년 분할상환.'
+        : '개인워크아웃: 원금 감면 가능(30~70%). 이자 전액 감면 + 최장 10년 분할상환.';
     options.push({ id:'shin', name:'신용회복위원회', score, ok, cautions,
       stats:[
-        ['예상 부담액', fmtW(shinBurden), 'b'],
-        ['감면율 (약 30%)', pct(shinReduce), 'g'],
+        ['상환 원금', isWorkout ? '원금 감면 가능' : fmtW(shinBurden), isWorkout ? 'g' : 'b'],
+        ['이자 감면', overdue <= 31 ? '약정이자 30~50% 인하' : overdue < 90 ? '약정이자 50% 인하' : '이자 전액 감면 가능', 'g'],
         ['월 상환액', fmtN(shinMonthly)+'원', ''],
-        ['변제기간', '최대 60개월', ''],
+        ['상환기간', `최장 ${shinPeriod}개월`, ''],
       ],
-      desc: `연체 초기 단계. 이자·연체료 감면 중심. 신청 절차 비교적 간단.`
+      desc: shinDesc
     });
   }
 
@@ -724,12 +916,29 @@ function doCalc() {
     if (flags.gambling) cautions.push('도박 이력 → 면책 불허가 위험 ★★★');
     if (!canBankrupt) cautions.push('소득이 생계비 이상 → 회생 우선 검토');
     if (assets > 0) cautions.push(`재산 ${fmtW(assets)} → 환가 후 변제 필요`);
+    const bankruptTaxRatio = totalDebt > 0 ? tax / totalDebt : 0;
     let score = 0;
     if (ok && canBankrupt) {
+      // 가용소득 구간별 차등 (소액 양수 구간 보정)
       if (disposable < 0) score += 45;
+      else if (disposable < 50000) score += 35;
+      else if (disposable < 100000) score += 25;
+      else if (disposable < 150000) score += 15;
       if (totalDebt > 300000000) score += 15;
-      if (flags.senior || flags.health) score += 20;
+      // 취약사유 개별 가산 (누적 가능, 최대 +40)
+      let vulnScore = 0;
+      if (flags.senior && age >= 65) vulnScore += 10;
+      if (flags.health) vulnScore += 15;
+      if (flags.welfare) vulnScore += 15;
+      if (flags.single_parent) vulnScore += 10;
+      score += Math.min(vulnScore, 40);
+      // 도박 이력 → 면책불허가 위험 감점
+      if (flags.gambling) score -= 20;
       score += 10;
+      // 비면책채권(세금) 비율 → 파산해도 세금은 면책 불가
+      if (bankruptTaxRatio > 0.5) { score -= 25; cautions.push(`비면책채권(세금) ${pct(bankruptTaxRatio)} → 파산해도 세금 ${fmtW(tax)} 면책 불가`); }
+      else if (bankruptTaxRatio > 0.3) { score -= 15; cautions.push(`비면책채권(세금) ${pct(bankruptTaxRatio)} → 파산해도 세금 ${fmtW(tax)} 면책 불가`); }
+      else if (bankruptTaxRatio > 0.1) { score -= 5; cautions.push(`세금 체납 ${fmtW(tax)} → 파산 면책 대상 아님`); }
     }
     options.push({ id:'bankrupt', name:'개인파산·면책', score, ok, cautions,
       stats:[
@@ -738,9 +947,19 @@ function doCalc() {
         ['환가 재산', fmtW(assets), ''],
         ['소요 기간', '약 6~12개월', ''],
       ],
-      desc: `소득으로 변제 불가 시. 면책 허가 시 채무 전액 소멸.${flags.senior?' 고령자 유리.':''}${flags.health?' 건강 사유 유리.':''}`
+      desc: `소득으로 변제 불가 시. 면책 허가 시 채무 전액 소멸.${flags.senior?' 고령자 유리.':''}${flags.health?' 건강 사유 유리.':''}${flags.tax_arrear?' 단, 세금은 비면책.':''}${flags.divorce?' 양육비 비면책.':''}`
     });
   }
+
+  // ── 100점 정규화 + Tier 보너스
+  const MAX_RAW = { reho: 105, saefund: 85, shin: 75, bankrupt: 110 };
+  const TIER_BONUS = { shin: 6, saefund: 6, reho: 3, bankrupt: 0 };
+  options.forEach(o => {
+    const maxRaw = MAX_RAW[o.id] || 100;
+    const normalized = Math.round(Math.max(0, o.score) / maxRaw * 100);
+    o.score = Math.min(100, normalized + (o.ok ? TIER_BONUS[o.id] || 0 : 0));
+    o.stats.push(['추천 점수', o.score + '/100점', o.score >= 60 ? 'g' : o.score >= 30 ? '' : 'r']);
+  });
 
   // 정렬: ok인 것 앞에, 점수순
   options.sort((a,b) => {
@@ -748,20 +967,61 @@ function doCalc() {
     return b.score - a.score;
   });
 
+  // ── 자격미달 판단
+  const ineligibility = [];
+  // Hard: 채무 없음
+  if (totalDebt === 0) {
+    ineligibility.push({ severity:'hard', title:'채무 없음',
+      msg:'채무가 없으므로 채무조정 대상이 아닙니다.',
+      alt:'가계부채 상담이 필요하시면 금융감독원 1332로 문의하세요.' });
+  }
+  // Hard: 채무 전액 세금
+  if (tax > 0 && tax >= totalDebt && totalDebt > 0) {
+    ineligibility.push({ severity:'hard', title:'채무 전액 비면책채권(세금)',
+      msg:`총채무 ${fmtW(totalDebt)} 전액이 조세채무입니다. 파산해도 면책 불가(채무자회생법 제566조), 새출발기금·신복위는 금융채무만 대상이므로 모든 채무조정 프로그램의 실질적 효과가 없습니다.`,
+      alt:'관할 세무서에 분할납부 또는 체납처분유예를 신청하시기 바랍니다. 국세: 국세청 126 / 지방세: 관할 구청 세무과' });
+  }
+  // Soft: 재산 > 채무
+  if (assets > totalDebt && totalDebt > 0) {
+    ineligibility.push({ severity:'soft', title:'재산이 채무보다 많음',
+      msg:`보유 재산(${fmtW(assets)})이 총채무(${fmtW(totalDebt)})를 초과하여 지급불능으로 보기 어렵습니다. 재산 처분을 통한 상환을 검토해 보세요.`,
+      note:'※ 주거용 부동산·압류 재산 등 특수 사정이 있는 경우 전문가 상담 필요. 신용회복위원회를 통한 이자 감면·분할상환은 재산과 무관하게 진행 가능합니다.' });
+  }
+  // Soft: 소액 채무
+  if (totalDebt > 0 && totalDebt < 1000000) {
+    ineligibility.push({ severity:'soft', title:'소액 채무 (절차 실익 부족)',
+      msg:`채무 ${fmtW(totalDebt)}은 채무조정 절차 비용(인지대·송달료·대리인비용) 대비 실익이 거의 없습니다. 채권자와 직접 분할상환 협의를 권장합니다.`,
+      note:'※ 기초생활수급자 등 긴급한 경우 긴급복지 지원(129) 연계가 가능합니다.' });
+  }
+  // Soft: 자력 상환 가능
+  if (disposable > 0 && totalDebt > 0 && disposable * 24 >= totalDebt) {
+    const months = Math.ceil(totalDebt / disposable);
+    ineligibility.push({ severity:'soft', title:'단기 자력 상환 가능',
+      msg:`현재 월 가용소득(${fmtN(disposable)}원)으로 약 ${months}개월 내 전액 상환이 가능합니다. 채무조정 절차 없이 자력 상환이 더 유리할 수 있습니다.`,
+      note:'※ 소득 변동·실직 가능성이 있는 경우 전문가 상담을 받으시기 바랍니다.' });
+  }
+  // Soft: 세금 비율 80% 이상
+  if (tax > 0 && totalDebt > 0 && tax / totalDebt >= 0.8 && tax < totalDebt) {
+    ineligibility.push({ severity:'soft', title:'세금 비율 과다 (80% 이상)',
+      msg:`채무의 ${pct(tax/totalDebt)}가 조세채무(${fmtW(tax)})로, 채무조정 프로그램의 실질적 감면 효과가 매우 제한적입니다. 세무서 납부유예를 우선 검토하세요.`,
+      note:'※ 나머지 금융채무 ' + fmtW(totalDebt - tax) + '에 대해서는 채무조정 효과가 있을 수 있습니다.' });
+  }
+
   // ── 렌더
   renderResult({
-    options, warnings,
+    options, warnings, ineligibility,
     totalDebt, income, spIncome, totalIncome, spIncomeBigger, assets, recentDebt, recentRatio,
     nonPartner, secured, personal, tax, household, adjustedHousehold, living, livingMin,
     overdue, age, youngMonths, prevProc,
     disposable, repayIncome, repayAsset, rehoExpected, rehoMonthly, rehoReduce,
-    partnerDebt, saefundBurden, saefundMonthly, saefundReduce,
-    shinBurden, shinMonthly, shinReduce,
+    partnerDebt, saefundBurden, saefundMonthly, saefundReduce, saefundPeriod, isBadDebtor,
+    shinBurden, shinMonthly, shinReduce, shinPeriod,
     flags: {...flags},
     // 상담일지 값
     journal: {
-      name: gv('f_name'), birth: gv('f_birth'), region: gv('f_region'),
-      source: gv('f_source'), family: gv('f_family'), income_type: gv('f_income_type'),
+      name: gv('f_name'), phone: gv('f_phone'), birth: gv('f_birth'), region: gv('f_region'),
+      source: gv('f_source'), family: gv('f_family'),
+      income_type: gv('f_income_type'), income_detail: gv('f_income_detail'),
       assets_detail: gv('f_assets_detail'), inheritance: gv('f_inheritance'), memo: gv('f_memo'),
     }
   });
@@ -770,8 +1030,36 @@ function doCalc() {
 function renderResult(d) {
   lastCalcData = d;
   document.getElementById('btn-export').style.display = '';
+  showSaveBtn();
   const panel = document.getElementById('result-panel');
   const rankLabel = ['🥇 최우선 추천','🥈 차선 고려','🥉 추가 검토'];
+
+  // ─ 자격미달 렌더
+  const hardList = (d.ineligibility || []).filter(x => x.severity === 'hard');
+  const softList = (d.ineligibility || []).filter(x => x.severity === 'soft');
+
+  let ineligHtml = '';
+  hardList.forEach(h => {
+    ineligHtml += `<div class="inelig-hard">
+      <h3>🚫 자격 미달: ${h.title}</h3>
+      <p>${h.msg}</p>
+      <div class="alt">💡 대안: ${h.alt}</div>
+    </div>`;
+  });
+  softList.forEach(s => {
+    ineligHtml += `<div class="inelig-soft">
+      <h4>⚠ 주의: ${s.title}</h4>
+      <p>${s.msg}</p>
+      ${s.note ? `<p class="note">${s.note}</p>` : ''}
+    </div>`;
+  });
+
+  // Hard 자격미달이면 프로그램 추천 차단
+  if (hardList.length > 0) {
+    panel.innerHTML = ineligHtml;
+    panel.scrollTop = 0;
+    return;
+  }
 
   // ─ 추천 카드
   let cardsHtml = '';
@@ -815,10 +1103,10 @@ function renderResult(d) {
         <td class="${sho?.ok?'ty':'tn'}">${sho?.ok?'✓ 가능':'✗ 불가'}</td>
         <td class="${bo?.ok?'ty':'tn'}">${bo?.ok?'✓ 가능':'✗ 불가'}</td>
       </tr>
-      <tr><td>예상 감면율</td>
-        <td>${pct(d.rehoReduce)}</td>
-        <td class="ty">${pct(d.saefundReduce)}</td>
-        <td>약 30~50%</td>
+      <tr><td>감면 내용</td>
+        <td>원금 ${pct(d.rehoReduce)} 감면</td>
+        <td class="ty">${d.isBadDebtor ? '원금 ' + pct(d.saefundReduce) + ' 감면' : '이자·연체료 감면'}</td>
+        <td>이자 감면 (원금 감면 없음)</td>
         <td class="ty">100% (면책시)</td>
       </tr>
       <tr><td>월 부담액</td>
@@ -829,8 +1117,8 @@ function renderResult(d) {
       </tr>
       <tr><td>상환 기간</td>
         <td>${d.youngMonths?`24개월(청년)/`:''}36개월</td>
-        <td>120개월</td>
-        <td>최대 60개월</td>
+        <td>${d.saefundPeriod}개월</td>
+        <td>최장 ${d.shinPeriod}개월</td>
         <td>해당없음</td>
       </tr>
       <tr><td>소득 요건</td>
@@ -865,10 +1153,10 @@ function renderResult(d) {
         <div class="drow"><span class="dl">총 채무액</span><span class="dv">${fmtW(d.totalDebt)}</span></div>
         <div class="drow"><span class="dl">협약기관 외 채무</span><span class="dv">${fmtW(d.nonPartner)}</span></div>
         <div class="drow dtotal"><span class="dl">협약기관 채무 (신청대상)</span><span class="dv">${fmtW(d.partnerDebt)}</span></div>
-        <div class="drow" style="font-size:11px;color:#718096"><span class="dl">공식: 채무-(채무-재산)×80%</span></div>
+        <div class="drow" style="font-size:11px;color:#718096"><span class="dl">${d.isBadDebtor ? '공식: 채무-(채무-재산)×80%' : '부실우려: 원금 감면 없음, 이자·연체료 감면'}</span></div>
         <div class="drow dtotal"><span class="dl">채무 부담액</span><span class="dv" style="color:#3182ce">${fmtW(Math.max(0,d.saefundBurden))}</span></div>
-        <div class="drow"><span class="dl">예상 감면율</span><span class="dv" style="color:#38a169">${pct(d.saefundReduce)}</span></div>
-        <div class="drow"><span class="dl">월 상환액 (÷120)</span><span class="dv">${fmtN(d.saefundMonthly)}원</span></div>
+        <div class="drow"><span class="dl">${d.isBadDebtor ? '예상 감면율' : '이자 감면(약)'}</span><span class="dv" style="color:#38a169">${pct(d.saefundReduce)}</span></div>
+        <div class="drow"><span class="dl">월 상환액 (÷${d.saefundPeriod})</span><span class="dv">${fmtN(d.saefundMonthly)}원</span></div>
         <div class="drow"><span class="dl">6개월 내 채무 비율</span><span class="dv" style="color:${d.recentRatio>0.3?'#e53e3e':'#38a169'}">${pct(d.recentRatio)} ${d.recentRatio>0.3?'(30% 초과)':'(30% 이하 ✓)'}</span></div>
       </div>
     </div>`;
@@ -886,11 +1174,12 @@ function renderResult(d) {
     <div class="sbox">
       <h3>📋 상담일지 요약</h3>
       <div class="journal-grid">
-        ${ji('이름 / 연락처 / 관할', j.name ? `${j.name}${j.region?' / '+j.region:''}` : '')}
+        ${ji('이름 / 연락처', j.name ? `${j.name}${j.phone?' / '+j.phone:''}` : '')}
+        ${ji('거주지', j.region)}
         ${ji('생년월일 / 나이', bd)}
         ${ji('유입경로', j.source)}
         ${ji('가족관계', j.family)}
-        ${ji('소득 현황', j.income_type + (d.totalIncome>0?' / 총 '+fmtN(d.totalIncome)+'원/월':''))}
+        ${ji('소득 현황', (j.income_type||'') + (j.income_detail?' ('+j.income_detail+')':'') + (d.totalIncome>0?' / 총 '+fmtN(d.totalIncome)+'원/월':''))}
         ${ji('재산 현황', j.assets_detail + (d.assets>0?' / '+fmtW(d.assets):''))}
         ${ji('채무 현황', `총 ${fmtW(d.totalDebt)}${d.secured>0?' (담보 '+fmtW(d.secured)+')':''}${d.tax>0?' (세금 '+fmtW(d.tax)+')':''}${d.personal>0?' (개인채무 '+fmtW(d.personal)+')':''}`)}
         ${ji('증여·상속', j.inheritance)}
@@ -904,7 +1193,7 @@ function renderResult(d) {
       <h3>✅ 상담 체크리스트</h3>
       <ul class="checklist">
         <li class="${j.region?'important':''}">거주지 확인 후 담당 법원 확인</li>
-        <li class="${d.age!==null?'important':''}">생년월일 확인 → 만 나이 (만 39세↓ 청년, 만 60세↑ 고령 파산 유리)</li>
+        <li class="${d.age!==null?'important':''}">생년월일 확인 → 만 나이 (만 29세↓ 청년회생 - 서울·부산·수원 등 일부 법원, 만 60세↑ 고령 파산 유리)</li>
         <li>기존 회생/파산 이력 확인 (회생 5년, 파산 7년 재신청 불가)</li>
         <li class="${d.secured>0||d.personal>0||d.tax>0?'important':''}">채무 세분화: 담보 / 보증 / 세금·4대보험 / 개인채무</li>
         <li class="${d.tax>0?'important':''}">세금·4대보험 체납 확인 → 우선채권(회생 별도 변제), 비면책채권(파산)</li>
@@ -913,7 +1202,9 @@ function renderResult(d) {
         <li>재산 철저 확인: 부동산·차량·보험·적금·보증금·설비</li>
         <li class="${j.family?'important':''}">가족관계 확인: 배우자 재산, 부양가족, 양육비</li>
         <li class="${d.flags.seizure?'important':''}">가압류 여부 → 새출발기금 전 해제 절차 필요</li>
-        <li class="${d.flags.longterm?'important':''}">장기연체코드[0101] 확인 (credit4u.or.kr)</li>
+        <li class="${d.flags.divorce?'important':''}">이혼 여부 → 최근 2년 내 재산분할 확인, 양육비(비면책) 확인</li>
+        <li class="${d.flags.tax_arrear?'important':''}">세금 체납 → 비면책채권, 회생 시 우선채권 별도 변제</li>
+        <li class="${d.flags.fraud_victim?'important':''}">사기 피해 → 채무 경위 소명, 과실 여부 확인</li>
         <li>파산 진행 시: 나이·소득·건강 상태 중 하나 이상 충족 여부</li>
       </ul>
     </div>`;
@@ -947,19 +1238,10 @@ function renderResult(d) {
         <label>평가표 - 상담 평가 (수정 가능)</label>
         <textarea id="txt_evaluation" placeholder="제도를 선택하면 자동 생성됩니다..." style="min-height:120px;"></textarea>
       </div>
-      <div class="narrative-row">
-        <div class="mini-box">
-          <label>평가표 - 상담평가 제목</label>
-          <input type="text" id="txt_solusion" placeholder="자동 생성" readonly>
-        </div>
-        <div class="mini-box">
-          <label>평가표 - 판정의견</label>
-          <input type="text" id="txt_verdict" placeholder="자동 생성" readonly>
-        </div>
-      </div>
     </div>`;
 
   panel.innerHTML = `
+    ${ineligHtml}
     <div class="rec-title">🎯 제도 추천 결과 (총 채무 ${fmtW(d.totalDebt)} · 월소득 ${fmtN(d.income)}원)</div>
     <div class="cards">${cardsHtml}</div>
     ${warnHtml}
@@ -984,14 +1266,10 @@ function onProgramSelect() {
   if (!sel) {
     document.getElementById('txt_narrative').value = '';
     document.getElementById('txt_evaluation').value = '';
-    document.getElementById('txt_solusion').value = '';
-    document.getElementById('txt_verdict').value = '';
     return;
   }
   document.getElementById('txt_narrative').value = generateNarrative(lastCalcData, sel);
   document.getElementById('txt_evaluation').value = generateEvaluation(lastCalcData, sel);
-  document.getElementById('txt_solusion').value = generateSolusion(sel);
-  document.getElementById('txt_verdict').value = generateVerdict(sel);
 }
 
 function generateSolusion(programId) {
@@ -1004,8 +1282,7 @@ function generateEvaluation(d, programId) {
   if (!d) return '';
   const lines = [];
   const j = d.journal || {};
-  const nameParts = (j.name||'').split(/[\/\s]+/).filter(Boolean);
-  const clientName = nameParts[0] || '신청인';
+  const clientName = (j.name||'').trim() || '신청인';
   const incomeType = j.income_type || (d.flags.biz ? '사업소득' : d.income > 0 ? '근로소득' : '');
 
   if (programId === 'bankrupt') {
@@ -1022,26 +1299,33 @@ function generateEvaluation(d, programId) {
     lines.push(`따라서 개인파산 후 면책을 통해 경제적 재기의 기회를 부여하는 것이 적합하다고 사료되어 이를 진행하기로 함.`);
     if (d.flags.gambling) lines.push(`다만 도박·투자 이력이 있어 면책 불허가 사유 해당 여부에 대한 검토가 필요함.`);
     if (d.age && d.age >= 60) lines.push(`만 ${d.age}세 고령으로 향후 근로능력 감소가 예상되어 파산이 더욱 적합함.`);
+    if (d.flags.welfare) lines.push(`기초생활수급자로서 지급불능 상태가 명백하여 파산 면책이 적합함.`);
+    if (d.flags.single_parent) lines.push(`한부모가정으로 양육 부담이 크고 변제능력이 부족하여 파산이 적합함.`);
+    if (d.flags.divorce) lines.push(`이혼으로 인한 양육비 채무가 있을 경우 비면책채권에 해당하여 파산 면책 후에도 지급 의무가 유지됨.`);
+    if (d.flags.tax_arrear) lines.push(`세금 체납이 있어 비면책채권에 해당하며 파산 면책 후에도 납부 의무가 유지됨.`);
+    if (d.flags.fraud_victim) lines.push(`사기 피해로 인한 채무로, 채무 경위 소명 시 면책 판단에 유리하게 작용할 수 있음.`);
   } else if (programId === 'reho') {
     lines.push(`신청인은 ${incomeType ? incomeType + '으로 ' : ''}월 ${fmtW(d.income)}의 지속적인 소득이 발생하고 있으며, ${d.adjustedHousehold}인 가구 생계비 ${fmtN(d.living)}원 공제 후 가용소득 월 ${fmtN(d.disposable)}원이 있어 변제계획 수립이 가능함.`);
     lines.push(`총 채무 ${fmtW(d.totalDebt)} 대비 예상 변제금 총 ${fmtW(d.rehoExpected)}, 월 변제액 ${fmtN(d.rehoMonthly)}원(${d.youngMonths ? d.youngMonths + '개월, 청년회생' : '36개월'})으로 예상 감면율 ${pct(d.rehoReduce)}임.`);
     if (d.assets > 0) lines.push(`재산 ${fmtW(d.assets)}${j.assets_detail ? '(' + j.assets_detail + ')' : ''}이 있으나 청산가치를 상회하는 변제금으로 채권자 이익에도 부합함.`);
     lines.push(`따라서 개인회생을 통해서 채무조정이 가능할 것으로 보임.`);
-    if (d.youngMonths) lines.push(`만 ${d.age}세로 청년회생(변제기간 ${d.youngMonths}개월) 적용이 가능하여 더욱 유리한 조건으로 진행 가능함.`);
+    if (d.youngMonths) lines.push(`만 ${d.age}세로 청년회생(변제기간 ${d.youngMonths}개월) 적용이 가능하여 더욱 유리한 조건으로 진행 가능함. 다만 서울회생법원·부산·수원 등 일부 법원에서만 적용되므로 관할법원 확인 필요.`);
     if (d.recentRatio > 0.3) lines.push(`다만 최근 6개월 내 신규채무 비율이 ${pct(d.recentRatio)}로 면책 불허가 사유 검토가 필요함.`);
+    if (d.flags.divorce) lines.push(`이혼에 따른 양육비가 있을 경우 비면책채권으로 변제계획에 반영하여야 함.`);
+    if (d.flags.tax_arrear) lines.push(`세금 체납이 있어 우선채권으로 별도 변제계획에 포함하여야 함.`);
+    if (d.flags.fraud_victim) lines.push(`사기 피해로 인한 채무로, 채무 경위 소명 시 법원 심리에 유리하게 작용할 수 있음.`);
   } else if (programId === 'saefund') {
     lines.push(`신청인은 ${d.overdue >= 90 ? '3개월 이상 연체된 부실차주' : '부실우려 차주'}로서 새출발기금 신청 대상에 해당함.`);
-    lines.push(`총 채무 ${fmtW(d.totalDebt)} 중 협약기관 채무 ${fmtW(d.partnerDebt)} 기준, 채무 부담액 ${fmtW(Math.max(0,d.saefundBurden))}, 예상 감면율 ${pct(d.saefundReduce)}, 월 상환액 ${fmtN(d.saefundMonthly)}원(120개월)으로 안정적인 상환이 가능할 것으로 판단됨.`);
+    lines.push(`총 채무 ${fmtW(d.totalDebt)} 중 협약기관 채무 ${fmtW(d.partnerDebt)} 기준, 채무 부담액 ${fmtW(Math.max(0,d.saefundBurden))}, 예상 감면율 ${pct(d.saefundReduce)}, 월 상환액 ${fmtN(d.saefundMonthly)}원(${d.saefundPeriod}개월)으로 안정적인 상환이 가능할 것으로 판단됨.`);
     if (d.nonPartner > 0) lines.push(`협약 외 채무 ${fmtW(d.nonPartner)}은 별도 처리가 필요함을 안내함.`);
     lines.push(`따라서 원금 감면과 장기 분할상환을 통해 채무 해소가 가능한 새출발기금 신청이 적합하다고 사료됨.`);
     if (d.flags.seizure) lines.push(`가압류가 있어 신청 전 해제 절차(약 1개월)가 선행되어야 함.`);
-    if (d.flags.longterm) lines.push(`장기연체코드[0101] 해당하여 credit4u.or.kr 확인 후 부실차주 신청 진행.`);
   } else if (programId === 'shin') {
     const o = d.overdue;
-    const subName = o >= 90 ? '개인워크아웃' : o > 31 ? '프리워크아웃' : '신속채무조정';
-    lines.push(`신청인은 현재 연체 ${o >= 90 ? '3개월 이상' : o > 31 ? '1~3개월' : '31일 이내'} 상태로, 총 채무 ${fmtW(d.totalDebt)}에 대해 신용회복위원회를 통한 ${subName} 절차가 적합함.`);
-    lines.push(`이자·연체료 감면 중심으로 예상 감면율 약 30~50%, 월 상환액 ${fmtN(d.shinMonthly)}원(최대 60개월)으로 정상적인 채무 상환이 가능할 것으로 판단됨.`);
-    lines.push(`따라서 신용회복위원회를 통해서 당장의 채무 부담을 줄이는 것이 유효할 것으로 판단됨.`);
+    const subName = o > 31 ? '프리워크아웃' : '신속채무조정';
+    lines.push(`신청인은 현재 연체 ${o > 31 ? '1~3개월' : '31일 이내'} 상태로, 총 채무 ${fmtW(d.totalDebt)}에 대해 신용회복위원회를 통한 ${subName} 절차가 적합함.`);
+    lines.push(`원금 감면 없이 이자 감면(약정이자 ${o <= 31 ? '30~50%' : '50%'} 인하) 및 장기 분할상환으로, 월 상환액 ${fmtN(d.shinMonthly)}원(최장 ${d.shinPeriod}개월)으로 정상적인 채무 상환이 가능할 것으로 판단됨.`);
+    lines.push(`따라서 신용회복위원회를 통해서 이자 부담을 줄이고 장기 분할상환하는 것이 유효할 것으로 판단됨.`);
     if (o >= 60) lines.push(`다만 연체 3개월 접근 시 새출발기금 동시 검토가 필요함.`);
     if (d.assets >= 650000000) lines.push(`재산이 과도하게 많아 개인회생은 어려울 것으로 판단되어 신용회복위원회가 더 적합함.`);
   }
@@ -1052,7 +1336,6 @@ function generateVerdict(programId) {
   // C64: 판정 의견 — 짧은 제도명 (실무 관행과 동일)
   if (programId === 'shin' && lastCalcData) {
     const o = lastCalcData.overdue;
-    if (o >= 90) return '개인워크아웃';
     if (o > 31) return '프리워크아웃';
     return '신속채무조정';
   }
@@ -1066,9 +1349,8 @@ function generateNarrative(d, programId) {
   const today = new Date();
   const todayFmt = `${today.getFullYear()}. ${String(today.getMonth()+1).padStart(2,'0')}. ${String(today.getDate()).padStart(2,'0')}`;
 
-  // 이름/연락처 파싱
-  const nameParts = (j.name||'').split(/[\/\s]+/).filter(Boolean);
-  const clientName = nameParts[0] || '신청인';
+  // 이름/연락처
+  const clientName = (j.name||'').trim() || '신청인';
 
   lines.push(`${todayFmt}    ${clientName}의 연락처(핸드폰)로 상담완료`);
   lines.push('');
@@ -1102,6 +1384,15 @@ function generateNarrative(d, programId) {
   if (d.personal > 0) debtDetails.push(`개인채무(사채) ${fmtW(d.personal)}`);
   if (debtDetails.length > 0) lines.push(`채무 내역: ${debtDetails.join(', ')}`);
 
+  // 채무증대 경위 (뱃지 기반)
+  const reasons = [];
+  if (d.flags.biz) reasons.push('사업 운영 중 경영 악화로 인한 채무 증가 및 폐업');
+  if (d.flags.fraud_victim) reasons.push('사기 피해(보이스피싱·투자사기 등)로 인한 비자발적 채무 발생');
+  if (d.flags.gambling) reasons.push('도박·코인·주식 투자 손실로 인한 채무 증가');
+  if (d.flags.divorce) reasons.push('이혼으로 인한 경제력 약화 및 재산분할·양육비 부담');
+  if (d.flags.health) reasons.push('건강 악화로 인한 의료비 지출 및 소득 감소');
+  if (reasons.length > 0) lines.push(`채무증대 경위: ${reasons.join('. ')}.`);
+
   // 소득 상황
   if (d.income > 0) {
     lines.push(`현재 월 소득 ${fmtW(d.income)}이며, ${d.adjustedHousehold}인 가구 기준 생계비 ${fmtN(d.living)}원${d.disposable >= 0 ? '을 초과' : '에 미달'}하여 가용자금은 월 ${fmtN(d.disposable)}원임.`);
@@ -1123,10 +1414,12 @@ function generateNarrative(d, programId) {
   if (j.family) specials.push(j.family);
   if (d.flags.gambling) specials.push('도박·코인·주식 이력 있음 - 사용처 확인 필요');
   if (d.flags.health) specials.push('건강 문제 있음');
-  if (d.flags.welfare) specials.push('기초수급 대상');
+  if (d.flags.welfare) specials.push('기초수급 대상 - 지급불능 소명 용이');
+  if (d.flags.single_parent) specials.push('한부모가정 - 양육 부담으로 변제능력 부족 소명 유리');
   if (d.flags.seizure) specials.push('가압류 있음 - 해제 절차 필요');
-  if (d.flags.longterm) specials.push('장기연체코드[0101] 해당');
-  if (d.flags.coowner) specials.push('공동대표');
+  if (d.flags.divorce) specials.push('이혼 - 최근 2년 이내 재산분할 내역 확인 필요, 양육비(비면책채권) 확인');
+  if (d.flags.tax_arrear) specials.push('세금 체납 - 비면책채권, 회생 시 우선채권 별도 변제');
+  if (d.flags.fraud_victim) specials.push('사기 피해(보이스피싱/투자사기 등) - 채무 경위 소명 필요');
   if (d.spIncome > 0) specials.push(`배우자 소득 월 ${fmtW(d.spIncome)}${d.spIncomeBigger ? ' (배우자가 부양 주체)' : ''}`);
   if (j.inheritance) specials.push(`증여·상속: ${j.inheritance}`);
   if (j.memo) specials.push(j.memo);
@@ -1151,19 +1444,28 @@ function generateNarrative(d, programId) {
     lines.push(`총 채무 ${fmtW(d.totalDebt)} 대비 변제능력이 없어 파산 후 면책을 통한 경제적 재기가 적절한 것으로 판단됨.`);
     if (d.flags.gambling) lines.push('다만, 도박·투자 이력이 있어 면책 불허가 사유 해당 여부에 대한 검토가 필요함.');
     if (d.assets > 0) lines.push(`보유 재산 ${fmtW(d.assets)}에 대한 환가 절차가 진행될 수 있음을 안내함.`);
+    if (d.flags.welfare) lines.push('기초생활수급자로서 지급불능 상태 소명 용이.');
+    if (d.flags.single_parent) lines.push('한부모가정으로 양육 부담이 크고 변제능력 부족 소명에 유리.');
+    if (d.flags.divorce) lines.push('양육비 채무가 있을 경우 비면책채권에 해당하여 면책 후에도 지급 의무 유지됨.');
+    if (d.flags.tax_arrear) lines.push('세금 체납은 비면책채권으로 면책 후에도 납부 의무 유지됨.');
+    if (d.flags.fraud_victim) lines.push('사기 피해로 인한 채무로 채무 경위 소명 시 면책 판단에 유리할 수 있음.');
   } else if (programId === 'reho') {
     lines.push(`신청인의 월 소득 ${fmtW(d.income)}에서 ${d.adjustedHousehold}인 가구 생계비 ${fmtN(d.living)}원을 공제한 가용자금 ${fmtN(d.disposable)}원이 발생하여 개인회생 변제계획 수립이 가능함.`);
     lines.push(`예상 변제금 총 ${fmtW(d.rehoExpected)}, 월 변제액 ${fmtN(d.rehoMonthly)}원, 예상 감면율 ${pct(d.rehoReduce)}로 채무 부담을 크게 경감할 수 있음.`);
-    if (d.youngMonths) lines.push(`만 ${d.age}세로 청년회생(변제기간 24개월) 적용이 가능하여 더욱 유리한 조건으로 진행 가능함.`);
+    if (d.youngMonths) lines.push(`만 ${d.age}세로 청년회생(변제기간 24개월) 적용이 가능하여 더욱 유리한 조건으로 진행 가능함. 다만 서울회생법원·부산·수원 등 일부 법원에서만 적용되므로 관할법원 확인 필요.`);
     if (d.recentRatio > 0.3) lines.push(`다만, 최근 6개월 내 신규채무 비율이 ${pct(d.recentRatio)}로 면책 불허가 사유 검토가 필요함.`);
+    if (d.flags.divorce) lines.push('이혼에 따른 양육비가 있을 경우 비면책채권으로 변제계획 반영 필요.');
+    if (d.flags.tax_arrear) lines.push('세금 체납은 우선채권으로 별도 변제계획 포함 필요.');
+    if (d.flags.fraud_victim) lines.push('사기 피해로 인한 채무로 법원 심리에 유리하게 작용 가능.');
   } else if (programId === 'saefund') {
     lines.push(`신청인은 ${d.overdue >= 90 ? '3개월 이상 연체된 부실차주' : '부실우려 차주'}로서 새출발기금 신청 대상에 해당함.`);
-    lines.push(`협약기관 채무 ${fmtW(d.partnerDebt)} 기준, 채무 부담액 ${fmtW(Math.max(0,d.saefundBurden))}, 예상 감면율 ${pct(d.saefundReduce)}, 월 상환액 ${fmtN(d.saefundMonthly)}원(120개월)으로 안정적인 상환이 가능할 것으로 판단됨.`);
+    lines.push(`협약기관 채무 ${fmtW(d.partnerDebt)} 기준, 채무 부담액 ${fmtW(Math.max(0,d.saefundBurden))}, 예상 감면율 ${pct(d.saefundReduce)}, 월 상환액 ${fmtN(d.saefundMonthly)}원(${d.saefundPeriod}개월)으로 안정적인 상환이 가능할 것으로 판단됨.`);
     if (d.nonPartner > 0) lines.push(`협약 외 채무 ${fmtW(d.nonPartner)}은 별도 처리가 필요함을 안내함.`);
     if (d.flags.seizure) lines.push('가압류가 있어 새출발기금 신청 전 해제 절차(약 1개월)가 선행되어야 함.');
   } else if (programId === 'shin') {
-    lines.push(`신청인은 연체 초기 단계로 신용회복위원회를 통한 채무조정이 적합함.`);
-    lines.push(`예상 감면율 약 30~50%, 월 상환액 ${fmtN(d.shinMonthly)}원(최대 60개월)으로 정상적인 채무 상환이 가능할 것으로 판단됨.`);
+    const subName = d.overdue > 31 ? '프리워크아웃' : '신속채무조정';
+    lines.push(`신청인은 연체 초기 단계로 신용회복위원회 ${subName}을 통한 채무조정이 적합함.`);
+    lines.push(`원금 감면 없이 이자 감면(약정이자 ${d.overdue <= 31 ? '30~50%' : '50%'} 인하) 및 장기 분할상환으로, 월 상환액 ${fmtN(d.shinMonthly)}원(최장 ${d.shinPeriod}개월)으로 정상적인 채무 상환이 가능할 것으로 판단됨.`);
   }
 
   // 기존 이력 경고
@@ -1186,9 +1488,8 @@ async function exportExcel() {
   const todayStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
   const todayDot = `${today.getFullYear()}. ${String(today.getMonth()+1).padStart(2,'0')}. ${String(today.getDate()).padStart(2,'0')}`;
 
-  const nameParts = (j.name||'').split(/[\/\s]+/).filter(Boolean);
-  const clientName = nameParts[0] || '';
-  const clientPhone = nameParts.slice(1).join(' ') || '';
+  const clientName = (j.name||'').trim() || '';
+  const clientPhone = (j.phone||'').trim() || '';
 
   const btn = document.getElementById('btn-export');
   btn.textContent = '⏳ 생성 중...';
@@ -1339,6 +1640,8 @@ function doReset() {
   document.getElementById('h_prev_warning').style.display='none';
   document.getElementById('f_sp_income').value='';
   document.getElementById('btn-export').style.display='none';
+  document.getElementById('btn-save').style.display='none';
+  document.getElementById('save-status').innerHTML='';
   lastCalcData = null;
   document.getElementById('result-panel').innerHTML=`
     <div class="placeholder">
@@ -1346,6 +1649,207 @@ function doReset() {
       <p style="font-size:15px;">왼쪽에 상담 정보를 입력 후<br><b>제도 분석·추천</b> 버튼을 눌러주세요</p>
       <p style="font-size:12px;color:#c0c8d8;margin-top:4px;">개인회생 · 새출발기금 · 신용회복위원회 · 파산 자동 비교</p>
     </div>`;
+}
+
+// ══════════════════════════════════════════════
+// ── Google Sheets 연동 (저장/조회)
+// ══════════════════════════════════════════════
+const SHEET_API = 'https://script.google.com/macros/s/AKfycbzwkLCyzvqZLQqP-v1eiIaaeC9fbd8U000xkzc2-mIAgHLw9w5F_wKXk0CM0w04SstC/exec';
+
+function showSaveBtn() {
+  document.getElementById('btn-save').style.display = 'block';
+}
+
+function saveToSheet() {
+  if (!lastCalcData) { alert('먼저 제도 분석을 실행해주세요.'); return; }
+  const d = lastCalcData;
+  const j = d.journal || {};
+  const selProgram = document.getElementById('sel_program')?.value || '';
+  const statusEl = document.getElementById('save-status');
+  const btn = document.getElementById('btn-save');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ 저장 중...';
+  statusEl.innerHTML = '';
+
+  // 순위 정보
+  const ranks = (d.options || []).filter(o => o.ok).sort((a,b) => b.score - a.score);
+  const programNames = { reho:'개인회생', saefund:'새출발기금', shin:'신용회복위원회', bankrupt:'개인파산·면책' };
+
+  // 선택 제도별 감면율·월변제액·변제기간 추출
+  const badgeMap = {biz:'사업자·폐업',young:'청년',senior:'고령',gambling:'도박·코인',seizure:'가압류',health:'건강문제',welfare:'기초수급',single_parent:'한부모',divorce:'이혼',tax_arrear:'세금체납',fraud_victim:'사기피해'};
+  let selReduce = '', selMonthly = '', selPeriod = '';
+  if (selProgram === 'reho') {
+    selReduce = d.rehoReduce != null ? '약 ' + (d.rehoReduce * 100).toFixed(1) + '%' : '';
+    selMonthly = Math.round(d.rehoMonthly || 0);
+    selPeriod = d.youngMonths ? '24개월(청년)' : '36개월';
+  } else if (selProgram === 'saefund') {
+    selReduce = d.saefundReduce != null ? '약 ' + (d.saefundReduce * 100).toFixed(1) + '%' : '';
+    selMonthly = Math.round(d.saefundMonthly || 0);
+    selPeriod = d.overdue >= 90 ? '최장 120개월' : '최장 60개월';
+  } else if (selProgram === 'shin') {
+    selReduce = '이자감면';
+    selMonthly = Math.round(d.shinMonthly || 0);
+    selPeriod = (d.shinPeriod || 120) + '개월';
+  } else if (selProgram === 'bankrupt') {
+    selReduce = '100%(면책시)';
+    selMonthly = 0;
+    selPeriod = '6~12개월';
+  }
+
+  // 전화번호 자동 포맷 (01012345678 → 010-1234-5678)
+  const rawPhone = (j.phone || '').replace(/[^0-9]/g, '');
+  const fmtPhone = rawPhone.length === 11 ? rawPhone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')
+                 : rawPhone.length === 10 ? rawPhone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')
+                 : j.phone || '';
+
+  const payload = {
+    name: j.name || '',
+    phone: fmtPhone,
+    birthYear: j.birth || '',
+    address: j.address || '',
+    household: j.household || '',
+    channel: j.channel || '',
+    family: j.family || '',
+    prevCase: j.prev_case || '',
+    prevCaseDate: j.prev_case_date || '',
+    income: d.income || 0,
+    spouseIncome: d.spIncome || 0,
+    incomeType: j.income_type || '',
+    incomeDetail: j.income_detail || '',
+    totalDebt: d.totalDebt || 0,
+    securedDebt: d.secured || 0,
+    taxDebt: d.tax || 0,
+    personalDebt: d.personal || 0,
+    nonPartnerDebt: d.nonPartner || 0,
+    recentDebt: d.recentDebt || 0,
+    overdueDays: d.overdue || 0,
+    assets: d.assets || 0,
+    assetsDetail: j.assets_detail || '',
+    inheritance: j.inheritance || '',
+    badges: Object.entries(d.flags||{}).filter(([k,v])=>v).map(([k])=>badgeMap[k]||k).join(', '),
+    memo: j.memo || '',
+    rank1: ranks[0] ? programNames[ranks[0].id] : '',
+    rank2: ranks[1] ? programNames[ranks[1].id] : '',
+    rank3: ranks[2] ? programNames[ranks[2].id] : '',
+    rank4: ranks[3] ? programNames[ranks[3].id] : '',
+    selectedProgram: programNames[selProgram] || selProgram,
+    reductionRate: selReduce,
+    monthlyPayment: selMonthly,
+    paymentPeriod: selPeriod
+  };
+
+  fetch(SHEET_API, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+  })
+  .then(r => r.text())
+  .then(txt => {
+    console.log('Sheet response:', txt);
+    statusEl.innerHTML = '<div class="save-status success">✅ 저장 완료! Google 시트에 기록되었습니다.</div>';
+    btn.textContent = '✅ 저장 완료';
+    setTimeout(() => { btn.textContent = '💾 상담 저장 (Google Sheets)'; btn.disabled = false; }, 3000);
+  })
+  .catch(err => {
+    console.error('Sheet save error:', err);
+    statusEl.innerHTML = '<div class="save-status error">❌ 저장 실패: ' + err.message + '</div>';
+    btn.textContent = '💾 상담 저장 (Google Sheets)';
+    btn.disabled = false;
+  });
+}
+
+// ── 이력 조회
+function openHistory() {
+  document.getElementById('history-modal').classList.add('active');
+  loadHistory();
+}
+
+function closeHistory() {
+  document.getElementById('history-modal').classList.remove('active');
+}
+
+function loadHistory() {
+  const listEl = document.getElementById('history-list');
+  listEl.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:40px;">불러오는 중...</p>';
+
+  fetch(SHEET_API + '?action=list')
+    .then(r => r.json())
+    .then(res => {
+      if (!res.success || !res.data.length) {
+        listEl.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:40px;">저장된 상담 이력이 없습니다.</p>';
+        return;
+      }
+      renderHistory(res.data);
+    })
+    .catch(err => {
+      listEl.innerHTML = '<p style="text-align:center;color:#dc2626;padding:40px;">조회 실패: ' + err.message + '</p>';
+    });
+}
+
+function searchHistory() {
+  const keyword = document.getElementById('history-search').value.trim();
+  if (!keyword) { loadHistory(); return; }
+
+  const listEl = document.getElementById('history-list');
+  listEl.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:40px;">검색 중...</p>';
+
+  fetch(SHEET_API + '?action=search&q=' + encodeURIComponent(keyword))
+    .then(r => r.json())
+    .then(res => {
+      if (!res.success || !res.data.length) {
+        listEl.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:40px;">검색 결과가 없습니다.</p>';
+        return;
+      }
+      renderHistory(res.data);
+    })
+    .catch(err => {
+      listEl.innerHTML = '<p style="text-align:center;color:#dc2626;padding:40px;">검색 실패: ' + err.message + '</p>';
+    });
+}
+
+function renderHistory(data) {
+  const fmtMoney = v => { const n = Number(v); return n >= 10000 ? (n/10000).toFixed(0) + '만' : n > 0 ? n.toLocaleString() : '-'; };
+  const fmtDate = id => { const s = String(id||''); return s.length >= 8 ? s.substring(0,4)+'.'+s.substring(4,6)+'.'+s.substring(6,8) : '-'; };
+  let html = `<table class="history-table">
+    <thead><tr>
+      <th>상담일</th><th>이름</th><th>선택제도</th>
+      <th>총채무</th><th>월소득</th><th>감면율</th><th>월변제</th><th>추천1위</th>
+    </tr></thead><tbody>`;
+
+  data.forEach(row => {
+    html += `<tr>
+      <td>${fmtDate(row['상담ID'])}</td>
+      <td class="td-name" title="클릭하면 상세 보기" onclick="showDetail(this)" data-row='${JSON.stringify(row).replace(/'/g,"&#39;")}'>${row['이름'] || '-'}</td>
+      <td style="font-weight:700;">${row['선택제도'] || '-'}</td>
+      <td>${fmtMoney(row['총채무'])}</td>
+      <td>${fmtMoney(row['월소득'])}</td>
+      <td>${row['예상감면율'] || '-'}</td>
+      <td>${fmtMoney(row['월변제액'])}</td>
+      <td>${row['추천1위'] || '-'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('history-list').innerHTML = html;
+}
+
+function showDetail(el) {
+  try {
+    const row = JSON.parse(el.dataset.row);
+    const lines = Object.entries(row).map(([k,v]) => `<b>${k}:</b> ${v || '-'}`).join('<br>');
+    const detailDiv = document.createElement('div');
+    detailDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:24px;border-radius:12px;max-width:600px;max-height:70vh;overflow-y:auto;z-index:1100;box-shadow:0 20px 60px rgba(0,0,0,0.4);font-size:12px;line-height:2;';
+    detailDiv.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <b style="font-size:15px;">📋 ${row['이름'] || '상담'} 상세</b>
+      <button onclick="this.closest('div').remove();document.getElementById('detail-backdrop')?.remove();" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+    </div>${lines}`;
+    const backdrop = document.createElement('div');
+    backdrop.id = 'detail-backdrop';
+    backdrop.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);z-index:1050;';
+    backdrop.onclick = () => { detailDiv.remove(); backdrop.remove(); };
+    document.body.appendChild(backdrop);
+    document.body.appendChild(detailDiv);
+  } catch(e) { console.error(e); }
 }
 </script>
 </body>
