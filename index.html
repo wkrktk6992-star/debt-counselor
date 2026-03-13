@@ -749,18 +749,13 @@ function doCalc() {
   const rehoReduce    = totalDebt > 0 ? (totalDebt - rehoExpected) / totalDebt : 0;
   const youngMonths   = (age !== null && age <= 34) ? 24 : null;
 
-  // ── 새출발기금 계산
-  // 연체 90일 이상(부실차주): 원금 탕감 적용 (공식: 채무-(채무-재산)*0.8), 최장 120개월
-  // 연체 90일 미만(부실우려): 이자·연체료 감면 위주, 원금 감면 없음, 최장 60개월
+  // ── 새출발기금 계산 (항상 부실차주 기준: 90일 연체 후 신청 전제)
+  // 실무상 90일 연체 후 부실차주로 신청 안내 → 원금 탕감 적용 기준으로 계산
   const isBadDebtor = overdue >= 90;
-  const saefundBurden  = isBadDebtor
-    ? partnerDebt - (partnerDebt - assets) * 0.8
-    : partnerDebt; // 부실우려: 원금 감면 없이 이자·연체료만 감면
-  const saefundPeriod = isBadDebtor ? 120 : 60;
+  const saefundBurden  = partnerDebt - (partnerDebt - assets) * 0.8; // 항상 부실차주 기준
+  const saefundPeriod  = 120; // 부실차주: 최장 120개월
   const saefundMonthly = Math.max(0, saefundBurden) / saefundPeriod;
-  const saefundReduce  = isBadDebtor
-    ? (partnerDebt > 0 ? (partnerDebt - Math.max(0, saefundBurden)) / partnerDebt : 0)
-    : 0.3; // 부실우려: 이자·연체료 감면 약 30%
+  const saefundReduce  = partnerDebt > 0 ? (partnerDebt - Math.max(0, saefundBurden)) / partnerDebt : 0;
 
   // ── 신용회복위원회 (원금 탕감 없음, 이자 감면 + 장기 분할상환)
   // 신속채무조정(30일↓): 이자 30~50% 인하, 최장 10년
@@ -807,10 +802,13 @@ function doCalc() {
       else if (rehoReduce > 0.5) score += 20;
       else if (rehoReduce > 0.3) score += 15;
       if (rehoMonthly < income * 0.3) score += 20;
+      else if (rehoMonthly < income * 0.5) score += 10;
       if (youngMonths) score += 10;
       if (overdue < 90) score += 10;
       // 개인채무(비금융) 포함 시 → 개인회생만 처리 가능
       if (personal > 0) score += 10;
+      // 안정적 가용소득 → 회생 적합도 상승
+      if (disposable >= 500000) score += 10;
       score += 20; // 기본 가용
       // 비면책채권(세금) 비율 → 회생해도 세금은 별도 납부
       if (taxRatio > 0.3) { score -= 10; cautions.push(`비면책채권(세금) ${pct(taxRatio)} → 회생 변제금 외 세금 ${fmtW(tax)} 별도 납부`); }
@@ -830,45 +828,56 @@ function doCalc() {
     });
   }
 
-  // 새출발기금
+  // 새출발기금 (90일 연체 후 부실차주 신청 전제)
   {
-    const ok = overdue >= 31 && totalDebt <= 1500000000 && assets < 650000000 && prevProc !== 'reho' && prevProc !== 'bankrupt';
+    const ok = totalDebt <= 1500000000 && assets < 650000000
+      && prevProc !== 'reho' && prevProc !== 'bankrupt';
     const cautions = [];
     if (recentRatio > 0.3) cautions.push(`6개월 내 채무 ${pct(recentRatio)} 초과 → 해당 채무 제외 후 진행`);
     if (nonPartner > 0) cautions.push(`협약 외 채무 ${fmtW(nonPartner)} 별도 처리`);
-    if (!flags.biz && overdue >= 31) cautions.push('자영업자·소상공인 자격 확인 필요');
+    if (!flags.biz) cautions.push('자영업자·소상공인 자격 확인 필요');
+    // 90일 미만 → 연체 대기 안내
+    if (!isBadDebtor) {
+      const daysToWait = Math.max(0, 90 - overdue);
+      cautions.push(`💡 현재 연체 ${overdue}일 → ${daysToWait}일 추가 대기 후 부실차주로 신청 시 원금 최대 60~90% 감면`);
+    }
     let score = 0;
     if (ok) {
-      if (saefundReduce > 0.6) score += 35;
-      if (saefundMonthly < income * 0.3) score += 20;
-      if (overdue >= 90) score += 15;
-      score += 15;
-      // 고령자 장기상환: 월 상환 감당 가능하면 감점 완화
+      // 부실차주 기준 감면율 가점 (항상 90일+ 전제)
+      if (saefundReduce > 0.6) score += 25;
+      if (income === 0) score += 5;
+      else if (saefundMonthly < income * 0.3) score += 10;
+      score += 15; // 부실차주 전제 가점
+      score += 10; // 기본
+      // 소득 있고 회생 가능한 가용소득 → 회생이 더 확실한 해결책
+      if (disposable > 150000) score -= 10;
+      // 아직 연체 90일 미달 → 대기 불확실성 소폭 감점
+      if (!isBadDebtor) score -= 5;
+      // 고령자 장기상환
       if (age !== null && age >= 65) {
         const affordable = income > 0 && saefundMonthly < income * 0.3;
         if (age >= 70) score -= affordable ? 5 : 20;
         else score -= affordable ? 0 : 10;
       }
-      // 협약외 채무 비율 높으면 실질 감면 효과 미미
       if (totalDebt > 0 && nonPartner / totalDebt > 0.5) score -= 10;
-      // 채무/소득 비율 극단적 → 상환 비현실적, 파산이 유리
       if (income > 0) {
         const dtiMonths = totalDebt / income;
-        if (dtiMonths > 600) score -= 35;
-        else if (dtiMonths > 300) score -= 20;
+        if (dtiMonths > 600) score -= 20;
+        else if (dtiMonths > 300) score -= 10;
       }
     }
+    const saefundDescText = isBadDebtor
+      ? `부실차주(90일↑ 연체): 원금 감면 적용. 소득 요건 없음. 최장 120개월 분할상환.`
+      : `90일 연체 후 부실차주로 신청 권장. 현재 연체 ${overdue}일. 부실차주 전환 시 원금 60~90% 감면, 최장 120개월.`;
     options.push({ id:'saefund', name:'새출발기금', score, ok, cautions,
       stats:[
         ['협약기관 채무', fmtW(partnerDebt), 'b'],
-        ['채무 부담액', fmtW(Math.max(0,saefundBurden)), 'b'],
+        ['채무 부담액(부실차주)', fmtW(Math.max(0,saefundBurden)), 'b'],
         ['예상 감면율', pct(saefundReduce), 'g'],
         ['월 상환액', fmtN(saefundMonthly)+'원', ''],
-        ['상환기간', isBadDebtor ? '최장 120개월' : '최장 60개월', ''],
+        ['상환기간', '최장 120개월', ''],
       ],
-      desc: isBadDebtor
-        ? `부실차주(90일↑ 연체): 원금 감면 적용. 소득 요건 없음.`
-        : `부실우려차주(31~89일 연체): 이자·연체료 감면 위주. 원금 감면 없음.`
+      desc: saefundDescText
     });
   }
 
@@ -935,6 +944,11 @@ function doCalc() {
       // 도박 이력 → 면책불허가 위험 감점
       if (flags.gambling) score -= 20;
       score += 10;
+      // 사적조정 가능 시 파산 감점 (사적조정 우선 원칙)
+      // 연체 90일 미만 + 소득 있음 → 신복위/새출발기금 우선
+      if (overdue < 90 && income > 0) score -= 15;
+      // 소득 있고 90일 이상 → 새출발/회생 우선 약간 감점
+      else if (income > 0 && overdue >= 90) score -= 5;
       // 비면책채권(세금) 비율 → 파산해도 세금은 면책 불가
       if (bankruptTaxRatio > 0.5) { score -= 25; cautions.push(`비면책채권(세금) ${pct(bankruptTaxRatio)} → 파산해도 세금 ${fmtW(tax)} 면책 불가`); }
       else if (bankruptTaxRatio > 0.3) { score -= 15; cautions.push(`비면책채권(세금) ${pct(bankruptTaxRatio)} → 파산해도 세금 ${fmtW(tax)} 면책 불가`); }
@@ -952,8 +966,8 @@ function doCalc() {
   }
 
   // ── 100점 정규화 + Tier 보너스
-  const MAX_RAW = { reho: 105, saefund: 85, shin: 75, bankrupt: 110 };
-  const TIER_BONUS = { shin: 6, saefund: 6, reho: 3, bankrupt: 0 };
+  const MAX_RAW = { reho: 105, saefund: 100, shin: 75, bankrupt: 110 };
+  const TIER_BONUS = { shin: 8, saefund: 8, reho: 4, bankrupt: 0 };
   options.forEach(o => {
     const maxRaw = MAX_RAW[o.id] || 100;
     const normalized = Math.round(Math.max(0, o.score) / maxRaw * 100);

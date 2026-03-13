@@ -10,3 +10,4 @@ _sample_export.xlsx
 _browser_test.py
 _test_downloads/
 .claude/
+.vercel
