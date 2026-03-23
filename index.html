@@ -2250,20 +2250,30 @@ function loadToForm(el) {
   } catch(e) { console.error(e); alert('데이터 불러오기 실패: ' + e.message); }
 }
 
+function closeDetail() {
+  const d = document.getElementById('detail-popup');
+  const b = document.getElementById('detail-backdrop');
+  if (d) d.remove();
+  if (b) b.remove();
+}
+
 function showDetail(el) {
   try {
+    // 기존 팝업 닫기
+    closeDetail();
     const row = JSON.parse(el.dataset.row);
     const lines = Object.entries(row).map(([k,v]) => `<b>${k}:</b> ${v || '-'}`).join('<br>');
     const detailDiv = document.createElement('div');
+    detailDiv.id = 'detail-popup';
     detailDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:24px;border-radius:12px;max-width:600px;max-height:70vh;overflow-y:auto;z-index:1100;box-shadow:0 20px 60px rgba(0,0,0,0.4);font-size:12px;line-height:2;';
     detailDiv.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <b style="font-size:15px;">📋 ${row['이름'] || '상담'} 상세</b>
-      <button onclick="this.closest('div').remove();document.getElementById('detail-backdrop')?.remove();" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+      <button onclick="closeDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
     </div>${lines}`;
     const backdrop = document.createElement('div');
     backdrop.id = 'detail-backdrop';
     backdrop.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);z-index:1050;';
-    backdrop.onclick = () => { detailDiv.remove(); backdrop.remove(); };
+    backdrop.onclick = closeDetail;
     document.body.appendChild(backdrop);
     document.body.appendChild(detailDiv);
   } catch(e) { console.error(e); }
