@@ -836,7 +836,7 @@ function doCalc() {
         ['예상 감면율', rehoReduce <= 0 ? '실익없음' : pct(rehoReduce), rehoReduce <= 0 ? 'r' : 'g'],
         ['변제기간', youngMonths ? `24개월(청년)/36개월` : '36개월', ''],
       ],
-      desc: `소득 기반 변제(무담보채무 ${fmtW(unsecuredDebt)} 기준). 가용자금(월 변제금) ${fmtW(Math.abs(disposable))}${disposable<0?'(생계비 부족)':''}.${secured>0?' 담보채무 '+fmtW(secured)+' 별도 상환.':''}${youngMonths?' 청년회생 적용 가능(만 34세 이하).':''}`
+      desc: `소득 기반 변제(무담보채무 ${fmtW(unsecuredDebt)} 기준). 가용자금(월 변제금) ${fmtW(Math.abs(disposable))}${disposable<0?'(생계비 부족)':''}.${secured>0?' 담보채무 '+fmtW(secured)+' 별도 상환.':''}${youngMonths?' 청년회생 적용 가능(만 34세 이하).':''}${rehoReduce<=0?' ⚠ 재산 과다로 인한 실익 부족. 자격미달 고려.':''}`
     });
   }
 
@@ -886,9 +886,12 @@ function doCalc() {
         else if (dtiMonths > 300) score -= 10;
       }
     }
-    const saefundDescText = isBadDebtor
-      ? `부실차주(90일↑ 연체): 원금 감면 적용. 소득 요건 없음. 최장 120개월 분할상환.`
-      : `90일 연체 후 부실차주로 신청 권장. 현재 연체 ${overdue||0}일. 부실차주 전환 시 원금 60~90% 감면, 최장 120개월.`;
+    const saefundAssetOver = assets > unsecuredDebt && unsecuredDebt > 0;
+    const saefundDescText = saefundAssetOver
+      ? `⚠ 재산 과다로 인한 실익 부족. 자격미달 고려. 재산 ${fmtW(assets)} > 무담보채무 ${fmtW(unsecuredDebt)}.`
+      : isBadDebtor
+        ? `부실차주(90일↑ 연체): 원금 감면 적용. 소득 요건 없음. 최장 120개월 분할상환.`
+        : `90일 연체 후 부실차주로 신청 권장. 현재 연체 ${overdue||0}일. 부실차주 전환 시 원금 60~90% 감면, 최장 120개월.`;
     options.push({ id:'saefund', name:'새출발기금', score, ok, cautions,
       stats:[
         ['협약기관 채무', fmtW(partnerDebt), 'b'],
@@ -990,7 +993,7 @@ function doCalc() {
         ['환가 재산', fmtW(assets), ''],
         ['소요 기간', '약 6~12개월', ''],
       ],
-      desc: `소득으로 변제 불가 시. 면책 허가 시 채무 전액 소멸.${flags.senior?' 고령자 유리.':''}${flags.health?' 건강 사유 유리.':''}${flags.tax_arrear?' 단, 세금은 비면책.':''}${flags.divorce?' 양육비 비면책.':''}`
+      desc: `소득으로 변제 불가 시. 면책 허가 시 채무 전액 소멸.${flags.senior?' 고령자 유리.':''}${flags.health?' 건강 사유 유리.':''}${flags.tax_arrear?' 단, 세금은 비면책.':''}${flags.divorce?' 양육비 비면책.':''}${assets>=totalDebt&&totalDebt>0?' ⚠ 재산 과다로 인한 실익 부족. 자격미달 고려.':''}`
     });
   }
 
