@@ -738,19 +738,21 @@ function doCalc() {
   const livingMin   = LIVING_MIN[adjustedHousehold] || LIVING_MIN[1];
   const livingBankrupt = LIVING_BANKRUPT[1]; // 파산 기준 (1인)
   const recentRatio = totalDebt > 0 ? recentDebt / totalDebt : 0;
-  const partnerDebt = totalDebt - nonPartner;
+  const unsecuredDebt = totalDebt - secured; // 담보 제외 무담보채무 (회생·새출발·신복위 대상)
+  const partnerDebt = unsecuredDebt - nonPartner; // 협약기관 채무 (새출발기금 대상)
 
-  // ── 개인회생 계산
+  // ── 개인회생 계산 (담보채무는 별도 상환 → 무담보채무 기준)
   const disposable    = totalIncome - living;
   const repayIncome   = Math.max(0, disposable * 36);
   const repayAsset    = assets;
   const rehoExpected  = Math.max(repayIncome, repayAsset);
   const rehoMonthly   = disposable > 0 ? rehoExpected / 36 : 0;
-  const rehoReduce    = totalDebt > 0 ? (totalDebt - rehoExpected) / totalDebt : 0;
+  const rehoReduce    = unsecuredDebt > 0 ? (unsecuredDebt - rehoExpected) / unsecuredDebt : 0;
   const youngMonths   = (age !== null && age <= 34) ? 24 : null;
 
   // ── 새출발기금 계산 (항상 부실차주 기준: 90일 연체 후 신청 전제)
   // 실무상 90일 연체 후 부실차주로 신청 안내 → 원금 탕감 적용 기준으로 계산
+  // 담보채무 제외, 협약기관 무담보채무만 대상
   const isBadDebtor = overdue >= 90;
   const saefundBurden  = partnerDebt - (partnerDebt - assets) * 0.8; // 항상 부실차주 기준
   const saefundPeriod  = 120; // 부실차주: 최장 120개월
@@ -760,8 +762,9 @@ function doCalc() {
   // ── 신용회복위원회 (원금 탕감 없음, 이자 감면 + 장기 분할상환)
   // 신속채무조정(30일↓): 이자 30~50% 인하, 최장 10년
   // 프리워크아웃(31~89일): 이자 50% 인하, 최장 10년
+  // 담보채무 제외 무담보채무 기준
   const shinReduce  = 0; // 원금 감면 없음
-  const shinBurden  = totalDebt; // 원금 전액 상환
+  const shinBurden  = unsecuredDebt; // 무담보채무 원금 상환
   const shinPeriod  = 120; // 최장 10년(120개월)
   const shinMonthly = shinBurden / shinPeriod;
 
@@ -816,6 +819,10 @@ function doCalc() {
       // 월변제액 > 소득: 청산가치가 너무 높아 현실적으로 변제 불가
       if (rehoMonthly > income && income > 0) { score -= 40; cautions.push(`월 변제액 ${fmtN(rehoMonthly)}원 > 월소득 ${fmtN(income)}원 → 청산가치 과다, 회생 사실상 불가`); }
       else if (rehoMonthly > income * 0.7) { score -= 15; cautions.push(`월 변제액이 소득의 70% 초과 → 생활 유지 곤란`); }
+      // 도박·코인 이력 + 최근채무 비중 → 회생 인가 리스크 (최근채무 어느정도는 진행 가능)
+      if (flags.gambling && recentRatio > 0.5) { score -= 15; cautions.push(`도박·코인 이력 + 최근채무 ${pct(recentRatio)} → 낭비행위로 회생 인가 기각 위험, 법원 소명 필요 ★★`); }
+      else if (flags.gambling && recentRatio > 0.3) { cautions.push(`도박·코인 이력 + 최근채무 ${pct(recentRatio)} → 법원 소명 필요`); }
+      else if (flags.gambling) { cautions.push('도박·코인 이력 → 재산 산입 가능, 법원 소명 필요'); }
       // 가용소득 소액 양수 → 법원 인가 가능성 낮음
       if (disposable > 0 && disposable < 150000) { score -= 15; cautions.push(`가용소득 월 ${fmtN(disposable)}원 → 법원 인가 가능성 낮음, 파산 검토`); }
     }
@@ -827,7 +834,7 @@ function doCalc() {
         ['예상 감면율', pct(rehoReduce), 'g'],
         ['변제기간', youngMonths ? `24개월(청년)/36개월` : '36개월', ''],
       ],
-      desc: `소득 기반 변제. 가용자금(월 변제금) ${fmtW(Math.abs(disposable))}${disposable<0?'(생계비 부족)':''}.${youngMonths?' 청년회생 적용 가능(만 34세 이하).':''}`
+      desc: `소득 기반 변제(무담보채무 ${fmtW(unsecuredDebt)} 기준). 가용자금(월 변제금) ${fmtW(Math.abs(disposable))}${disposable<0?'(생계비 부족)':''}.${secured>0?' 담보채무 '+fmtW(secured)+' 별도 상환.':''}${youngMonths?' 청년회생 적용 가능(만 34세 이하).':''}`
     });
   }
 
@@ -2002,12 +2009,13 @@ function saveToSheet() {
   // 선택 제도별 감면율·월변제액·변제기간 추출
   const badgeMap = {biz:'사업자·폐업',young:'청년',senior:'고령',gambling:'도박·코인',seizure:'가압류',health:'건강문제',welfare:'기초수급',single_parent:'한부모',divorce:'이혼',tax_arrear:'세금체납',fraud_victim:'사기피해'};
   let selReduce = '', selMonthly = '', selPeriod = '';
+  const fmtReduce = (v) => v != null ? (v * 100).toFixed(1) + '%' : '';
   if (selProgram === 'reho') {
-    selReduce = d.rehoReduce != null ? '약 ' + (d.rehoReduce * 100).toFixed(1) + '%' : '';
+    selReduce = fmtReduce(d.rehoReduce);
     selMonthly = Math.round(d.rehoMonthly || 0);
     selPeriod = d.youngMonths ? '24개월(청년)' : '36개월';
   } else if (selProgram === 'saefund') {
-    selReduce = d.saefundReduce != null ? '약 ' + (d.saefundReduce * 100).toFixed(1) + '%' : '';
+    selReduce = fmtReduce(d.saefundReduce);
     selMonthly = Math.round(d.saefundMonthly || 0);
     selPeriod = d.overdue >= 90 ? '최장 120개월' : '최장 60개월';
   } else if (selProgram === 'shin') {
@@ -2138,23 +2146,108 @@ function renderHistory(data) {
   let html = `<table class="history-table">
     <thead><tr>
       <th>상담일</th><th>이름</th><th>선택제도</th>
-      <th>총채무</th><th>월소득</th><th>감면율</th><th>월변제</th><th>추천1위</th>
+      <th>총채무</th><th>월소득</th><th>감면율</th><th>월변제</th><th>추천1위</th><th style="width:70px;">불러오기</th>
     </tr></thead><tbody>`;
 
   data.forEach(row => {
+    const rowJson = JSON.stringify(row).replace(/'/g,"&#39;");
     html += `<tr>
       <td>${fmtDate(row['상담ID'])}</td>
-      <td class="td-name" title="클릭하면 상세 보기" onclick="showDetail(this)" data-row='${JSON.stringify(row).replace(/'/g,"&#39;")}'>${row['이름'] || '-'}</td>
+      <td class="td-name" title="클릭하면 상세 보기" onclick="showDetail(this)" data-row='${rowJson}'>${row['이름'] || '-'}</td>
       <td style="font-weight:700;">${row['선택제도'] || '-'}</td>
       <td>${fmtMoney(row['총채무'])}</td>
       <td>${fmtMoney(row['월소득'])}</td>
       <td>${fmtRate(row['예상감면율'])}</td>
       <td>${fmtMoney(row['월변제액'])}</td>
       <td>${row['추천1위'] || '-'}</td>
+      <td><button onclick="loadToForm(this)" data-row='${rowJson}' style="background:var(--accent);color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;">📥 불러오기</button></td>
     </tr>`;
   });
   html += '</tbody></table>';
   document.getElementById('history-list').innerHTML = html;
+}
+
+function loadToForm(el) {
+  try {
+    const row = JSON.parse(el.dataset.row);
+    // 기본 정보
+    document.getElementById('f_name').value = row['이름'] || '';
+    document.getElementById('f_phone').value = row['연락처'] || '';
+    document.getElementById('f_birth').value = row['출생연도'] || '';
+    document.getElementById('f_region').value = row['거주지'] || '';
+    document.getElementById('f_family').value = row['가족관계'] || '';
+
+    // 가구원수
+    const hh = document.getElementById('f_household');
+    const hhVal = String(row['가구원수'] || '1');
+    for (let o of hh.options) { if (o.value === hhVal) { hh.value = hhVal; break; } }
+
+    // 소득
+    document.getElementById('f_income').value = row['월소득'] || 0;
+    document.getElementById('f_sp_income').value = row['배우자소득'] || 0;
+    document.getElementById('f_income_detail').value = row['소득상세'] || '';
+    const incType = document.getElementById('f_income_type');
+    const itVal = row['소득유형'] || '';
+    for (let o of incType.options) { if (o.value === itVal || o.text === itVal) { incType.value = o.value; break; } }
+
+    // 채무
+    document.getElementById('f_total_debt').value = row['총채무'] || 0;
+    document.getElementById('f_secured').value = row['담보채무'] || 0;
+    document.getElementById('f_tax').value = row['세금체납'] || 0;
+    document.getElementById('f_personal').value = row['개인채무'] || 0;
+    document.getElementById('f_non_partner').value = row['협약외채무'] || 0;
+    document.getElementById('f_recent_debt').value = row['최근6개월신규'] || 0;
+
+    // 연체기간
+    const od = document.getElementById('f_overdue');
+    const odVal = String(row['연체기간'] || '0');
+    for (let o of od.options) { if (o.value === odVal) { od.value = odVal; break; } }
+
+    // 재산
+    document.getElementById('f_assets').value = row['재산총액'] || 0;
+    document.getElementById('f_assets_detail').value = row['재산상세'] || '';
+    document.getElementById('f_inheritance').value = row['증여상속'] || '';
+
+    // 기존진행
+    const pp = document.getElementById('f_prev_proc');
+    const ppVal = row['기존진행'] || 'none';
+    for (let o of pp.options) { if (o.value === ppVal || o.text === ppVal) { pp.value = o.value; break; } }
+    document.getElementById('f_prev_date').value = row['완료시기'] || '';
+
+    // 메모
+    document.getElementById('f_memo').value = row['기타메모'] || '';
+
+    // 뱃지
+    const badgeStr = row['뱃지(플래그)'] || '';
+    const allBadges = ['biz','young','senior','gambling','seizure','health','welfare','single_parent','divorce','tax_arrear','fraud_victim'];
+    allBadges.forEach(b => {
+      const el = document.getElementById('b_' + b);
+      if (el) {
+        if (badgeStr.includes(b)) {
+          el.classList.add('on');
+        } else {
+          el.classList.remove('on');
+        }
+      }
+    });
+
+    // 모달 닫기
+    closeHistory();
+
+    // 실시간 계산 트리거
+    if (typeof onLiveCalc === 'function') onLiveCalc();
+    if (typeof onBirthChange === 'function') onBirthChange();
+
+    // 스크롤 맨 위로
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // 알림
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1B6B3A;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+    toast.textContent = `✅ ${row['이름'] || '상담'} 건이 폼에 입력되었습니다. 제도를 선택하고 분석해 주세요.`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  } catch(e) { console.error(e); alert('데이터 불러오기 실패: ' + e.message); }
 }
 
 function showDetail(el) {
