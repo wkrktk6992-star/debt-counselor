@@ -1298,59 +1298,13 @@ let lastCalcData = null;
 function onProgramSelect() {
   if (!lastCalcData) return;
   const sel = document.getElementById('sel_program').value;
-  const txtNarr = document.getElementById('txt_narrative');
-  const txtEval = document.getElementById('txt_evaluation');
-  if (!sel) { txtNarr.value = ''; txtEval.value = ''; return; }
-
-  // 즉시 템플릿 표시
-  const templateNote = generateNarrative(lastCalcData, sel);
-  const templateEval = generateEvaluation(lastCalcData, sel);
-  txtNarr.value = templateNote;
-  txtEval.value = templateEval;
-
-  // AI 보강 요청
-  const j = lastCalcData.journal || {};
-  const d = lastCalcData;
-  const payload = {
-    action: 'generateReport',
-    program: sel,
-    name: j.name || '', birthYear: j.birth_year || '',
-    household: j.household || d.adjustedHousehold || 1, family: j.family || '',
-    income: d.income || 0, incomeType: j.income_type || '',
-    spouseIncome: j.spouse_income || 0,
-    totalDebt: d.totalDebt || 0, securedDebt: d.securedDebt || 0,
-    taxDebt: d.taxDebt || 0, personalDebt: j.personal_debt || 0,
-    overdueDays: j.overdue_days || 0,
-    assets: d.assets || 0, assetsDetail: j.assets_detail || '',
-    badges: Object.keys(d.flags||{}).filter(k=>d.flags[k]).join(','),
-    memo: j.memo || '',
-    reductionRate: d.rehoReduce ? (d.rehoReduce*100).toFixed(1)+'%' : '',
-    monthlyPayment: d.rehoMonthly || d.newstartMonthly || 0,
-    paymentPeriod: d.youngMonths ? d.youngMonths+'개월' : '36개월',
-    templateNote: templateNote, templateEval: templateEval
-  };
-
-  txtNarr.style.opacity = '0.6';
-  txtEval.style.opacity = '0.6';
-
-  fetch(SHEET_API, {
-    method: 'POST',
-    headers: {'Content-Type': 'text/plain'},
-    body: JSON.stringify(payload)
-  })
-  .then(r => r.json())
-  .then(res => {
-    txtNarr.style.opacity = '1';
-    txtEval.style.opacity = '1';
-    if (res.success && res.consultation_note) {
-      txtNarr.value = res.consultation_note;
-      txtEval.value = res.evaluation_note;
-    }
-  })
-  .catch(() => {
-    txtNarr.style.opacity = '1';
-    txtEval.style.opacity = '1';
-  });
+  if (!sel) {
+    document.getElementById('txt_narrative').value = '';
+    document.getElementById('txt_evaluation').value = '';
+    return;
+  }
+  document.getElementById('txt_narrative').value = generateNarrative(lastCalcData, sel);
+  document.getElementById('txt_evaluation').value = generateEvaluation(lastCalcData, sel);
 }
 
 function generateSolusion(programId) {
