@@ -816,8 +816,10 @@ function doCalc() {
       // 비면책채권(세금) 비율 → 회생해도 세금은 별도 납부
       if (taxRatio > 0.3) { score -= 10; cautions.push(`비면책채권(세금) ${pct(taxRatio)} → 회생 변제금 외 세금 ${fmtW(tax)} 별도 납부`); }
       else if (taxRatio > 0.1) { score -= 5; cautions.push(`비면책채권(세금) ${pct(taxRatio)} → 세금 ${fmtW(tax)} 별도 납부 필요`); }
+      // 감면율 마이너스 → 재산이 채무보다 많아 회생 실익 없음
+      if (rehoReduce <= 0) { score -= 60; cautions.push(`감면율 ${pct(rehoReduce)} → 재산(청산가치)이 채무를 초과하여 회생 실익 없음. 신복위 신속채무조정 검토 권장`); }
       // 월변제액 > 소득: 청산가치가 너무 높아 현실적으로 변제 불가
-      if (rehoMonthly > income && income > 0) { score -= 40; cautions.push(`월 변제액 ${fmtN(rehoMonthly)}원 > 월소득 ${fmtN(income)}원 → 청산가치 과다, 회생 사실상 불가`); }
+      else if (rehoMonthly > income && income > 0) { score -= 40; cautions.push(`월 변제액 ${fmtN(rehoMonthly)}원 > 월소득 ${fmtN(income)}원 → 청산가치 과다, 회생 사실상 불가`); }
       else if (rehoMonthly > income * 0.7) { score -= 15; cautions.push(`월 변제액이 소득의 70% 초과 → 생활 유지 곤란`); }
       // 도박·코인 이력 + 최근채무 비중 → 회생 인가 리스크 (최근채무 어느정도는 진행 가능)
       if (flags.gambling && recentRatio > 0.5) { score -= 15; cautions.push(`도박·코인 이력 + 최근채무 ${pct(recentRatio)} → 낭비행위로 회생 인가 기각 위험, 법원 소명 필요 ★★`); }
@@ -831,7 +833,7 @@ function doCalc() {
         ['가용자금(월)', fmtN(disposable)+'원', disposable>=0?'g':'r'],
         ['예상 변제금', fmtW(rehoExpected), 'b'],
         ['월 변제액', fmtN(rehoMonthly)+'원', ''],
-        ['예상 감면율', pct(rehoReduce), 'g'],
+        ['예상 감면율', rehoReduce <= 0 ? '실익없음' : pct(rehoReduce), rehoReduce <= 0 ? 'r' : 'g'],
         ['변제기간', youngMonths ? `24개월(청년)/36개월` : '36개월', ''],
       ],
       desc: `소득 기반 변제(무담보채무 ${fmtW(unsecuredDebt)} 기준). 가용자금(월 변제금) ${fmtW(Math.abs(disposable))}${disposable<0?'(생계비 부족)':''}.${secured>0?' 담보채무 '+fmtW(secured)+' 별도 상환.':''}${youngMonths?' 청년회생 적용 가능(만 34세 이하).':''}`
@@ -867,6 +869,8 @@ function doCalc() {
       // 소득 있고 회생 가능하지만 새출발이 총변제액도 적으면 감점 축소
       if (disposable > 150000 && Math.max(0,saefundBurden) >= rehoExpected) score -= 10;
       else if (disposable > 150000) score -= 3; // 회생 가능하지만 새출발이 유리 → 소폭만 감점
+      // 재산 > 무담보채무 → 새출발기금 실익 없음
+      if (assets > unsecuredDebt && unsecuredDebt > 0) { score -= 40; cautions.push(`재산 ${fmtW(assets)} > 무담보채무 ${fmtW(unsecuredDebt)} → 새출발기금 실익 없음. 신복위 신속채무조정 검토 권장`); }
       // 아직 연체 90일 미달 → 대기 불확실성 소폭 감점
       if (!isBadDebtor) score -= 5;
       // 고령자 장기상환
@@ -915,7 +919,9 @@ function doCalc() {
       // 소액채무 추가 가산
       if (totalDebt < 10000000) score += 10;
       // 재산 ≥ 채무: 파산·회생·새출발 모두 불리 → 신복위가 현실적 대안
-      if (assets >= totalDebt && totalDebt > 0) score += 30;
+      if (assets >= totalDebt && totalDebt > 0) { score += 40; cautions.push(`재산 ${fmtW(assets)} ≥ 채무 ${fmtW(totalDebt)} → 다른 제도 실익 없음, 신속채무조정(이자감면+분할상환)이 최적`); }
+      // 재산 > 무담보채무 (담보 제외) → 신복위 우위
+      else if (assets > unsecuredDebt && unsecuredDebt > 0) { score += 25; cautions.push(`재산 ${fmtW(assets)} > 무담보채무 ${fmtW(unsecuredDebt)} → 원금감면 제도 실익 낮음, 이자감면+분할상환 권장`); }
       // 고액채무 + 원금감면 없는 경우(신속/프리워크아웃) → 실질 효과 미미
       if (!isWorkout && totalDebt > 50000000) score -= 15;
       // 90일↑ 연체 시 새출발기금이 감면율에서 거의 항상 유리 → 신복위 감점
@@ -970,6 +976,8 @@ function doCalc() {
       if (overdue < 90 && income > 0) score -= 15;
       // 소득 있고 90일 이상 → 새출발/회생 우선 약간 감점
       else if (income > 0 && overdue >= 90) score -= 5;
+      // 재산 > 채무 → 파산 실익 없음 (지급불능 아님)
+      if (assets >= totalDebt && totalDebt > 0) { score -= 50; cautions.push(`재산 ${fmtW(assets)} ≥ 총채무 ${fmtW(totalDebt)} → 지급불능 상태 아님, 파산 실익 없음`); }
       // 비면책채권(세금) 비율 → 파산해도 세금은 면책 불가
       if (bankruptTaxRatio > 0.5) { score -= 25; cautions.push(`비면책채권(세금) ${pct(bankruptTaxRatio)} → 파산해도 세금 ${fmtW(tax)} 면책 불가`); }
       else if (bankruptTaxRatio > 0.3) { score -= 15; cautions.push(`비면책채권(세금) ${pct(bankruptTaxRatio)} → 파산해도 세금 ${fmtW(tax)} 면책 불가`); }
