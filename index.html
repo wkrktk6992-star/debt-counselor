@@ -1303,8 +1303,18 @@ function onProgramSelect() {
     document.getElementById('txt_evaluation').value = '';
     return;
   }
-  document.getElementById('txt_narrative').value = generateNarrative(lastCalcData, sel);
-  document.getElementById('txt_evaluation').value = generateEvaluation(lastCalcData, sel);
+  // AI 생성 내용이 있으면 우선 사용, 없으면 템플릿
+  const aiNote = window._aiConsultationNote || '';
+  const aiEval = window._aiEvaluationNote || '';
+  const templateNote = generateNarrative(lastCalcData, sel);
+  const templateEval = generateEvaluation(lastCalcData, sel);
+
+  document.getElementById('txt_narrative').value = aiNote
+    ? aiNote + '\n\n── 분석 데이터 ──\n' + templateNote
+    : templateNote;
+  document.getElementById('txt_evaluation').value = aiEval
+    ? aiEval + '\n\n── 분석 데이터 ──\n' + templateEval
+    : templateEval;
 }
 
 function generateSolusion(programId) {
@@ -2230,6 +2240,10 @@ function loadToForm(el) {
         }
       }
     });
+
+    // AI 생성 상담일지/평가표 내용 저장 (제도 선택 시 사용)
+    window._aiConsultationNote = row['상담일지AI'] || '';
+    window._aiEvaluationNote = row['평가표AI'] || '';
 
     // 모달 닫기
     closeHistory();
